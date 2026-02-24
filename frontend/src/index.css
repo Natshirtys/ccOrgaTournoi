@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/*
+ * Palette IBM (Indépendante Boule Magnet) — Charte V2026
+ * Bleu:       #1b75bc  → hsl(207 75% 42%)
+ * Blanc:      #FFFFFF
+ * Gris foncé: #414042  → hsl(300 1.5% 25.5%)
+ */
+
+@theme inline {
+  /* Fond & texte */
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(300 1.5% 25.5%);
+
+  /* Cards */
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(300 1.5% 25.5%);
+
+  /* Popovers */
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(300 1.5% 25.5%);
+
+  /* Primary = Bleu IBM #1b75bc */
+  --color-primary: hsl(207 75% 42%);
+  --color-primary-foreground: hsl(0 0% 100%);
+
+  /* Secondary = bleu très clair */
+  --color-secondary: hsl(207 30% 95%);
+  --color-secondary-foreground: hsl(207 75% 35%);
+
+  /* Muted */
+  --color-muted: hsl(210 20% 96%);
+  --color-muted-foreground: hsl(300 1.5% 40%);
+
+  /* Accent = bleu léger */
+  --color-accent: hsl(207 40% 93%);
+  --color-accent-foreground: hsl(207 75% 35%);
+
+  /* Destructive */
+  --color-destructive: hsl(0 72% 51%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+
+  /* Borders & inputs */
+  --color-border: hsl(207 20% 88%);
+  --color-input: hsl(207 20% 88%);
+  --color-ring: hsl(207 75% 42%);
+
+  /* Radii */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    margin: 0;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+}
