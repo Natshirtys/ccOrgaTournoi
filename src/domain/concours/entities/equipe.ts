@@ -13,6 +13,7 @@ export class Equipe extends Entity {
   }
 
   validateComposition(typeEquipe: TypeEquipe): void {
+    if (this.joueurIds.length === 0) return;
     const attendu = JOUEURS_PAR_TYPE[typeEquipe];
     if (this.joueurIds.length !== attendu) {
       throw new InvariantViolationError(

@@ -41,8 +41,8 @@ export function InscriptionsTab({ concours }: InscriptionsTabProps) {
             {concours.inscriptions.map((insc) => (
               <TableRow key={insc.id}>
                 <TableCell className="font-medium">{insc.nomEquipe}</TableCell>
-                <TableCell>{insc.joueurs.join(', ')}</TableCell>
-                <TableCell>{insc.club}</TableCell>
+                <TableCell>{insc.joueurs?.length ? insc.joueurs.join(', ') : '-'}</TableCell>
+                <TableCell>{insc.club || '-'}</TableCell>
                 <TableCell>
                   {insc.teteDeSerie && <Badge variant="secondary">TdS</Badge>}
                 </TableCell>

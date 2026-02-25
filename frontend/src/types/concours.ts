@@ -42,8 +42,8 @@ export interface InscriptionDto {
   id: string;
   equipeId: string;
   nomEquipe: string;
-  joueurs: string[];
-  club: string;
+  joueurs?: string[];
+  club?: string;
   teteDeSerie: boolean;
 }
 
@@ -92,18 +92,14 @@ export interface CreateConcoursPayload {
   organisateurId: string;
   typeEquipe: TypeEquipe;
   typePhase?: TypePhase;
+  nbTerrains: number;
 }
 
 export interface InscrireEquipePayload {
   nomEquipe: string;
-  joueurs: string[];
-  club: string;
+  joueurs?: string[];
+  club?: string;
   teteDeSerie: boolean;
-}
-
-export interface AjouterTerrainPayload {
-  numero: number;
-  nom: string;
 }
 
 export interface SaisirScorePayload {

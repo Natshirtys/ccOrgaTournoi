@@ -27,6 +27,7 @@ const creerConcoursSchema = z.object({
   typeEquipe: z.nativeEnum(TypeEquipe),
   nbEquipesMin: z.number().int().min(2).default(4),
   nbEquipesMax: z.number().int().min(2).default(32),
+  nbTerrains: z.number().int().min(0).max(50).default(0),
   typePhase: z.nativeEnum(TypePhase).default(TypePhase.POULES),
   reglement: z.object({
     scoreVictoire: z.number().int().positive().default(13),
@@ -39,8 +40,8 @@ const creerConcoursSchema = z.object({
 
 const inscrireEquipeSchema = z.object({
   equipeNom: z.string().min(1),
-  joueurIds: z.array(z.string().min(1)).min(1),
-  clubId: z.string().min(1),
+  joueurIds: z.array(z.string().min(1)).default([]),
+  clubId: z.string().default(''),
   teteDeSerie: z.boolean().default(false),
 });
 
@@ -108,7 +109,9 @@ export function createConcoursRouter(ctx: AppContext): Router {
         id: t.id, numero: t.numero, nom: t.nom, disponible: t.disponible,
       })),
       inscriptions: concours.inscriptionsActives.map((i) => ({
-        id: i.id, equipeId: i.equipeId, equipeNom: i.equipe.nom,
+        id: i.id, equipeId: i.equipeId, nomEquipe: i.equipe.nom,
+        joueurs: i.equipe.joueurIds,
+        club: i.equipe.clubId,
         teteDeSerie: i.teteDeSerie,
       })),
       phases: concours.phases.map((p) => ({
@@ -141,6 +144,13 @@ export function createConcoursRouter(ctx: AppContext): Router {
     const reglement = new ReglementConcours(data.reglement);
 
     const concours = new Concours(id, data.nom, dates, data.lieu, data.organisateurId, formule, reglement);
+
+    // Auto-générer les terrains
+    for (let i = 0; i < data.nbTerrains; i++) {
+      const terrain = new Terrain(`terrain-${i + 1}`, id, i + 1, `Terrain ${i + 1}`, true, 'standard');
+      concours.ajouterTerrain(terrain);
+    }
+
     await ctx.concoursRepository.save(concours);
 
     res.status(201).json(concoursToJson(concours));

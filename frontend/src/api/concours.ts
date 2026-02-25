@@ -4,7 +4,6 @@ import type {
   ConcoursDetail,
   CreateConcoursPayload,
   InscrireEquipePayload,
-  AjouterTerrainPayload,
   LancerTiragePayload,
 } from '../types/concours';
 
@@ -33,13 +32,6 @@ export function cloturerInscriptions(id: string): Promise<{ statut: string }> {
 
 export function inscrireEquipe(id: string, payload: InscrireEquipePayload): Promise<void> {
   return apiFetch(`/concours/${id}/inscriptions`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
-
-export function ajouterTerrain(id: string, payload: AjouterTerrainPayload): Promise<void> {
-  return apiFetch(`/concours/${id}/terrains`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });

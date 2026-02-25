@@ -7,7 +7,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { AjouterTerrainDialog } from './AjouterTerrainDialog';
 import type { ConcoursDetail } from '@/types/concours';
 
 interface TerrainsTabProps {
@@ -15,16 +14,8 @@ interface TerrainsTabProps {
 }
 
 export function TerrainsTab({ concours }: TerrainsTabProps) {
-  const canAdd = concours.statut !== 'TERMINE' && concours.statut !== 'ANNULE' && concours.statut !== 'ARCHIVE';
-
   return (
     <div className="space-y-4">
-      {canAdd && (
-        <div className="flex justify-end">
-          <AjouterTerrainDialog concoursId={concours.id} />
-        </div>
-      )}
-
       {concours.terrains.length === 0 ? (
         <p className="py-8 text-center text-muted-foreground">Aucun terrain.</p>
       ) : (

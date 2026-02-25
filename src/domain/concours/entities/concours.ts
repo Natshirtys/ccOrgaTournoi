@@ -142,9 +142,11 @@ export class Concours extends AggregateRoot {
     if (this.nbEquipesInscrites >= this.formule.nbEquipesMax) {
       throw new InvariantViolationError('Nombre maximum d\'équipes atteint');
     }
-    // Vérifier qu'aucun joueur n'est déjà inscrit dans une autre équipe
-    this.verifierPasDeDoublonJoueur(inscription.equipe);
-    inscription.equipe.validateComposition(this.formule.typeEquipe);
+    // Vérifier composition et doublons seulement si l'équipe a des joueurs
+    if (inscription.equipe.joueurIds.length > 0) {
+      this.verifierPasDeDoublonJoueur(inscription.equipe);
+      inscription.equipe.validateComposition(this.formule.typeEquipe);
+    }
     this._inscriptions.push(inscription);
   }
 

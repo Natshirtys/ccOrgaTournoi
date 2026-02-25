@@ -28,13 +28,15 @@ export function InscrireEquipeDialog({ concoursId }: InscrireEquipeDialogProps) 
   const [teteDeSerie, setTeteDeSerie] = useState(false);
 
   const mutation = useMutation({
-    mutationFn: () =>
-      inscrireEquipe(concoursId, {
+    mutationFn: () => {
+      const joueursList = joueurs.split(',').map((j) => j.trim()).filter(Boolean);
+      return inscrireEquipe(concoursId, {
         nomEquipe,
-        joueurs: joueurs.split(',').map((j) => j.trim()).filter(Boolean),
-        club,
+        ...(joueursList.length > 0 && { joueurs: joueursList }),
+        ...(club && { club }),
         teteDeSerie,
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['concours', concoursId] });
       setOpen(false);
@@ -77,7 +79,6 @@ export function InscrireEquipeDialog({ concoursId }: InscrireEquipeDialogProps) 
               value={joueurs}
               onChange={(e) => setJoueurs(e.target.value)}
               placeholder="Dupont, Martin, Durand"
-              required
             />
           </div>
           <div className="grid gap-2">
@@ -86,7 +87,6 @@ export function InscrireEquipeDialog({ concoursId }: InscrireEquipeDialogProps) 
               id="club"
               value={club}
               onChange={(e) => setClub(e.target.value)}
-              required
             />
           </div>
           <div className="flex items-center gap-2">

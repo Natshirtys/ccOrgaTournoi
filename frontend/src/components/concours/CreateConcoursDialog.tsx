@@ -33,6 +33,7 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
   const [dateFin, setDateFin] = useState('');
   const [typeEquipe, setTypeEquipe] = useState<TypeEquipe>('DOUBLETTE');
   const [typePhase, setTypePhase] = useState<TypePhase>('POULES');
+  const [nbTerrains, setNbTerrains] = useState(8);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,6 +45,7 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
       organisateurId: 'org-1',
       typeEquipe,
       typePhase,
+      nbTerrains,
     });
     setOpen(false);
     setNom('');
@@ -52,6 +54,7 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
     setDateFin('');
     setTypeEquipe('DOUBLETTE');
     setTypePhase('POULES');
+    setNbTerrains(8);
   }
 
   return (
@@ -122,6 +125,17 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
                 <SelectItem value="ELIMINATION_SIMPLE">Élimination directe + complémentaire</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="nbTerrains">Nombre de terrains</Label>
+            <Input
+              id="nbTerrains"
+              type="number"
+              min={0}
+              max={50}
+              value={nbTerrains}
+              onChange={(e) => setNbTerrains(parseInt(e.target.value, 10) || 0)}
+            />
           </div>
           <DialogFooter>
             <Button type="submit" disabled={isPending}>
