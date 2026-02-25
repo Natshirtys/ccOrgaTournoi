@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -10,6 +12,7 @@ import {
 } from '@/components/ui/table';
 import { MatchRow } from './MatchRow';
 import { fetchMatchs } from '@/api/matchs';
+import { exportFeuillesDeMatch } from '@/lib/pdf-export';
 import type { ConcoursDetail, MatchDto } from '@/types/concours';
 
 interface MatchsTabProps {
@@ -50,8 +53,20 @@ export function MatchsTab({ concours }: MatchsTabProps) {
     return <p className="py-8 text-center text-muted-foreground">Aucun match.</p>;
   }
 
+  const allMatchs = data?.data ?? [];
+
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => exportFeuillesDeMatch(concours, allMatchs, equipeLookup)}
+        >
+          <FileText className="mr-2 h-4 w-4" />
+          Exporter feuilles de match
+        </Button>
+      </div>
       {matchsByTour.map(([tour, matchs]) => (
         <Card key={tour}>
           <CardHeader>

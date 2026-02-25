@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -10,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { fetchClassement } from '@/api/matchs';
+import { exportClassement } from '@/lib/pdf-export';
 import type { ConcoursDetail } from '@/types/concours';
 
 interface ClassementTabProps {
@@ -48,6 +51,17 @@ export function ClassementTab({ concours }: ClassementTabProps) {
   }
 
   return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => exportClassement(concours, classement, equipeLookup)}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Exporter classement
+        </Button>
+      </div>
     <Table>
       <TableHeader>
         <TableRow>
@@ -84,5 +98,6 @@ export function ClassementTab({ concours }: ClassementTabProps) {
         ))}
       </TableBody>
     </Table>
+    </div>
   );
 }
