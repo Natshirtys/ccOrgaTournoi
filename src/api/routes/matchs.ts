@@ -3,22 +3,28 @@ import { z } from 'zod';
 import { AppContext } from '../context.js';
 import { validateBody } from '../middleware/validation.js';
 import { ApiError } from '../middleware/error-handler.js';
-import { Score, ResultatMatch, GoalAverage } from '../../domain/shared/value-objects.js';
-import { TypeResultat, CritereClassement } from '../../domain/shared/enums.js';
+import { Score, ResultatMatch, GoalAverage, PhaseDefinition } from '../../domain/shared/value-objects.js';
+import { TypeResultat, CritereClassement, TypePhase, StatutPhase } from '../../domain/shared/enums.js';
 import { Match } from '../../domain/concours/entities/match.js';
+import { Tour } from '../../domain/concours/entities/tour.js';
+import { Phase } from '../../domain/concours/entities/phase.js';
 import { Classement, LigneClassement } from '../../domain/concours/entities/classement.js';
 import { PointsRankingStrategy } from '../../engine/strategies/ranking/points-ranking-strategy.js';
-import { RankingEntry, MatchResultEntry } from '../../engine/strategies/interfaces.js';
+import { RankingEntry, MatchResultEntry, TourGeneration } from '../../engine/strategies/interfaces.js';
+import { PoolPhaseStrategy, buildKoCrossMatchups } from '../../engine/strategies/phase/pool-phase-strategy.js';
+import { SingleEliminationStrategy } from '../../engine/strategies/phase/single-elimination-strategy.js';
+import { ComplementaireStrategy } from '../../engine/strategies/phase/complementaire-strategy.js';
+import { SwissSystemStrategy } from '../../engine/strategies/phase/swiss-system-strategy.js';
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
 const saisirScoreSchema = z.object({
-  scoreA: z.number().int().min(0),
-  scoreB: z.number().int().min(0),
+  scoreEquipeA: z.number().int().min(0),
+  scoreEquipeB: z.number().int().min(0),
 });
 
 const declarerForfaitSchema = z.object({
-  equipeId: z.string().min(1),
+  equipeDeclarantForfaitId: z.string().min(1),
 });
 
 // ─── Helper ─────────────────────────────────────────────────────────────────
@@ -51,16 +57,15 @@ export function createMatchsRouter(ctx: AppContext): Router {
           matchs.push({
             id: match.id,
             phaseId: phase.id,
+            phaseType: phase.type,
             tourId: tour.id,
             tourNumero: tour.numero,
+            tourNom: tour.nom,
             equipeAId: match.equipeAId,
             equipeBId: match.equipeBId,
             statut: match.statut,
-            score: match.score ? { pointsA: match.score.pointsA, pointsB: match.score.pointsB } : null,
-            resultat: match.resultat ? {
-              vainqueur: match.resultat.vainqueur,
-              type: match.resultat.type,
-            } : null,
+            score: match.score ? { equipeA: match.score.pointsA, equipeB: match.score.pointsB } : null,
+            resultat: match.resultat ? match.resultat.type : null,
             terrainId: match.terrainId,
           });
         }
@@ -83,19 +88,19 @@ export function createMatchsRouter(ctx: AppContext): Router {
   // POST /:id/matchs/:matchId/score — Saisir le score et valider
   router.post('/:id/matchs/:matchId/score', validateBody(saisirScoreSchema), asyncHandler(async (req, res) => {
     const { concours, match } = await findMatch(ctx, param(req.params.id), param(req.params.matchId));
-    const { scoreA, scoreB } = req.body;
+    const { scoreEquipeA, scoreEquipeB } = req.body;
 
-    const score = new Score(scoreA, scoreB);
+    const score = new Score(scoreEquipeA, scoreEquipeB);
     match.saisirScore(score);
 
     // Déterminer le résultat
     const reglement = concours.reglement;
     let resultat: ResultatMatch;
 
-    if (scoreA === scoreB && reglement.nulAutorise) {
+    if (scoreEquipeA === scoreEquipeB && reglement.nulAutorise) {
       resultat = ResultatMatch.nul(score, reglement.pointsNul);
     } else {
-      const vainqueurId = scoreA > scoreB ? match.equipeAId : match.equipeBId!;
+      const vainqueurId = scoreEquipeA > scoreEquipeB ? match.equipeAId : match.equipeBId!;
       const pointsV = reglement.pointsVictoire;
       const pointsD = reglement.pointsDefaite;
       resultat = new ResultatMatch(
@@ -113,7 +118,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
     res.json({
       matchId: match.id,
       statut: match.statut,
-      score: { pointsA: scoreA, pointsB: scoreB },
+      score: { pointsA: scoreEquipeA, pointsB: scoreEquipeB },
       vainqueur: resultat.vainqueur,
     });
   }));
@@ -122,16 +127,277 @@ export function createMatchsRouter(ctx: AppContext): Router {
   router.post('/:id/matchs/:matchId/forfait', validateBody(declarerForfaitSchema), asyncHandler(async (req, res) => {
     const { concours, match } = await findMatch(ctx, param(req.params.id), param(req.params.matchId));
 
-    match.declarerForfait(req.body.equipeId);
+    match.declarerForfait(req.body.equipeDeclarantForfaitId);
 
-    const vainqueurId = req.body.equipeId === match.equipeAId ? match.equipeBId! : match.equipeAId;
+    const vainqueurId = req.body.equipeDeclarantForfaitId === match.equipeAId ? match.equipeBId! : match.equipeAId;
     await ctx.concoursRepository.save(concours);
 
     res.json({
       matchId: match.id,
       statut: match.statut,
-      forfaitEquipe: req.body.equipeId,
+      forfaitEquipe: req.body.equipeDeclarantForfaitId,
       vainqueur: vainqueurId,
+    });
+  }));
+
+  // POST /:id/generer-tour-suivant — Générer le tour / phase suivant(e)
+  router.post('/:id/generer-tour-suivant', asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+
+    if (concours.phases.length === 0) {
+      throw ApiError.badRequest('Aucune phase n\'existe encore');
+    }
+
+    // Trouver la phase en cours
+    let phase = concours.phases.find((p) => p.statut === StatutPhase.EN_COURS);
+    if (!phase) throw ApiError.badRequest('Aucune phase en cours');
+
+    const dernierTour = phase.dernierTour;
+    if (!dernierTour) throw ApiError.badRequest('Aucun tour dans la phase en cours');
+
+    // Vérifier que tous les matchs du dernier tour sont terminés
+    if (!dernierTour.tousMatchsTermines) {
+      throw ApiError.badRequest('Tous les matchs du tour en cours doivent être terminés');
+    }
+
+    // Terminer le tour si pas encore fait
+    if (dernierTour.statut !== 'TERMINE') {
+      dernierTour.demarrer();
+      dernierTour.terminer();
+    }
+
+    // Collecter tous les résultats de la phase
+    const phaseResults = collectPhaseResults(phase);
+
+    // Récupérer les équipes de la phase
+    const phaseEquipeIds = collectPhaseEquipeIds(phase);
+
+    const phaseType = phase.type;
+    let newTourGen: { numero: number; matchups: { equipeAId: string; equipeBId: string | null }[]; nom?: string } | null = null;
+
+    if (phaseType === TypePhase.POULES) {
+      const nbPoules = phase.config.constraints?.nbPoules ?? Math.floor(phaseEquipeIds.length / 4);
+
+      // Reconstruire les poules depuis les matchs du Tour 1
+      // Chaque poule de 4 a 2 matchs au Tour 1 (A-B, C-D)
+      const tour1 = phase.tours[0];
+      const pouleAssignments: import('../../engine/strategies/interfaces.js').DrawAssignment[] = [];
+      if (tour1) {
+        const matchsPerPoule = 2; // 4 équipes → 2 matchs
+        let pouleIdx = 0;
+        let posInPoule = 0;
+        for (const match of tour1.matchs) {
+          pouleAssignments.push({ equipeId: match.equipeAId, position: posInPoule * 2, pouleIndex: pouleIdx });
+          if (match.equipeBId) {
+            pouleAssignments.push({ equipeId: match.equipeBId, position: posInPoule * 2 + 1, pouleIndex: pouleIdx });
+          }
+          posInPoule++;
+          if (posInPoule >= matchsPerPoule) {
+            posInPoule = 0;
+            pouleIdx++;
+          }
+        }
+      }
+
+      const poolStrategy = new PoolPhaseStrategy(pouleAssignments.length > 0 ? pouleAssignments : undefined);
+      const poolContext = {
+        phaseId: phase.id,
+        equipeIds: phaseEquipeIds,
+        matchResults: phaseResults,
+        config: { nbPoules },
+      };
+
+      // Vérifier si la phase de poules est complète (5 matchs par poule)
+      const phaseComplete = poolStrategy.isPhaseComplete(poolContext);
+
+      if (!phaseComplete) {
+        // Générer tour 2 ou 3 dans les poules
+        newTourGen = poolStrategy.generateNextTour(poolContext, dernierTour.numero);
+      } else {
+        // Poules terminées → créer phase KO avec les qualifiés et croisement
+        const qualifies = poolStrategy.getQualifies(poolContext);
+
+        if (qualifies.length < 2) {
+          throw ApiError.badRequest('Pas assez de qualifiés pour créer la phase éliminatoire');
+        }
+
+        // Terminer la phase de poules
+        phase.terminer();
+
+        // Créer nouvelle phase ELIMINATION_SIMPLE
+        const newPhaseId = `phase-${concours.phases.length + 1}`;
+        const phaseDef = new PhaseDefinition(
+          TypePhase.ELIMINATION_SIMPLE,
+          'integral',
+          [CritereClassement.POINTS],
+          [],
+          null,
+        );
+        const newPhase = new Phase(newPhaseId, concours.id, TypePhase.ELIMINATION_SIMPLE, concours.phases.length + 1, phaseDef);
+        concours.ajouterPhase(newPhase);
+        newPhase.demarrer();
+
+        // Croisement KO classique (1er A vs 2e D, etc.)
+        const crossMatchups = buildKoCrossMatchups(qualifies);
+
+        // Générer uniquement le premier tour avec les croisements
+        const roundName = crossMatchups.length === 1 ? 'Finale' :
+          crossMatchups.length === 2 ? 'Demi-finales' : 'Quarts de finale';
+        const elimTours: TourGeneration[] = [{ numero: 1, matchups: crossMatchups, nom: roundName }];
+
+        for (const tourGen of elimTours) {
+          const tourId = `${newPhaseId}-tour-${tourGen.numero}`;
+          const tour = new Tour(tourId, newPhaseId, tourGen.numero, undefined, [], tourGen.nom);
+          for (let i = 0; i < tourGen.matchups.length; i++) {
+            const mu = tourGen.matchups[i];
+            const matchId = `${tourId}-match-${i + 1}`;
+            const match = new Match(matchId, tourId, mu.equipeAId, mu.equipeBId);
+            tour.ajouterMatch(match);
+          }
+          newPhase.ajouterTour(tour);
+        }
+
+        await ctx.concoursRepository.save(concours);
+        res.status(201).json({
+          message: 'Phase éliminatoire créée avec croisement des poules',
+          phaseId: newPhaseId,
+          phaseType: TypePhase.ELIMINATION_SIMPLE,
+          qualifies: qualifies.map((q) => ({ equipeId: q.equipeId, poule: q.pouleIndex, rang: q.rang })),
+          tours: elimTours.map((t) => ({
+            numero: t.numero,
+            nom: t.nom,
+            matchups: t.matchups.map((m) => ({ equipeA: m.equipeAId, equipeB: m.equipeBId })),
+          })),
+        });
+        return;
+      }
+    } else if (phaseType === TypePhase.ELIMINATION_SIMPLE) {
+      const elimStrategy = new SingleEliminationStrategy();
+      const elimContext = {
+        phaseId: phase.id,
+        equipeIds: phaseEquipeIds,
+        matchResults: phaseResults,
+        config: {},
+      };
+
+      // Après le tour 1 : créer la phase CONSOLANTE avec les perdants
+      if (dernierTour.numero === 1) {
+        const losers = elimStrategy.getFirstRoundLosers(elimContext);
+        if (losers.length >= 2) {
+          const consolPhaseId = `phase-${concours.phases.length + 1}`;
+          const consolDef = new PhaseDefinition(
+            TypePhase.CONSOLANTE,
+            'integral',
+            [CritereClassement.POINTS],
+            [],
+            null,
+          );
+          const consolPhase = new Phase(consolPhaseId, concours.id, TypePhase.CONSOLANTE, concours.phases.length + 1, consolDef);
+          concours.ajouterPhase(consolPhase);
+          consolPhase.demarrer();
+
+          const consolStrategy = new ComplementaireStrategy();
+          const consolTours = consolStrategy.generateTours({
+            phaseId: consolPhaseId,
+            equipeIds: losers,
+            matchResults: [],
+            config: {},
+          });
+
+          for (const tourGen of consolTours) {
+            const tourId = `${consolPhaseId}-tour-${tourGen.numero}`;
+            const tour = new Tour(tourId, consolPhaseId, tourGen.numero, undefined, [], tourGen.nom);
+            for (let i = 0; i < tourGen.matchups.length; i++) {
+              const mu = tourGen.matchups[i];
+              const matchId = `${tourId}-match-${i + 1}`;
+              const match = new Match(matchId, tourId, mu.equipeAId, mu.equipeBId);
+              tour.ajouterMatch(match);
+            }
+            consolPhase.ajouterTour(tour);
+          }
+        }
+      }
+
+      // Générer le tour suivant du bracket principal
+      newTourGen = elimStrategy.generateNextTour(elimContext, dernierTour.numero);
+
+      if (!newTourGen) {
+        // Phase terminée
+        phase.terminer();
+        await ctx.concoursRepository.save(concours);
+        res.json({ message: 'Phase d\'élimination terminée' });
+        return;
+      }
+    } else if (phaseType === TypePhase.CONSOLANTE) {
+      const consolStrategy = new ComplementaireStrategy();
+      const consolContext = {
+        phaseId: phase.id,
+        equipeIds: phaseEquipeIds,
+        matchResults: phaseResults,
+        config: {},
+      };
+
+      newTourGen = consolStrategy.generateNextTour(consolContext, dernierTour.numero);
+
+      if (!newTourGen) {
+        phase.terminer();
+        await ctx.concoursRepository.save(concours);
+        res.json({ message: 'Phase consolante terminée' });
+        return;
+      }
+    } else if (phaseType === TypePhase.SYSTEME_SUISSE) {
+      const swissStrategy = new SwissSystemStrategy();
+      const swissContext = {
+        phaseId: phase.id,
+        equipeIds: phaseEquipeIds,
+        matchResults: phaseResults,
+        config: { nbTours: phase.config.constraints?.nbPoules }, // nbTours from config
+      };
+
+      newTourGen = swissStrategy.generateNextTour(swissContext, dernierTour.numero);
+
+      if (!newTourGen) {
+        phase.terminer();
+        await ctx.concoursRepository.save(concours);
+        res.json({ message: 'Système suisse terminé' });
+        return;
+      }
+    } else if (phaseType === TypePhase.CHAMPIONNAT) {
+      throw ApiError.badRequest('Le championnat génère tous les tours au tirage, pas de progression dynamique');
+    } else {
+      throw ApiError.badRequest(`Type de phase non supporté pour la progression : ${phaseType}`);
+    }
+
+    if (!newTourGen) {
+      throw ApiError.badRequest('Impossible de générer le tour suivant');
+    }
+
+    // Créer le nouveau tour et ses matchs
+    const tourId = `${phase.id}-tour-${newTourGen.numero}`;
+    const newTour = new Tour(tourId, phase.id, newTourGen.numero, undefined, [], newTourGen.nom);
+
+    for (let i = 0; i < newTourGen.matchups.length; i++) {
+      const mu = newTourGen.matchups[i];
+      const matchId = `${tourId}-match-${i + 1}`;
+      const match = new Match(matchId, tourId, mu.equipeAId, mu.equipeBId);
+      newTour.ajouterMatch(match);
+    }
+
+    phase.ajouterTour(newTour);
+    await ctx.concoursRepository.save(concours);
+
+    res.status(201).json({
+      phaseId: phase.id,
+      phaseType,
+      tour: {
+        numero: newTourGen.numero,
+        nom: newTourGen.nom,
+        matchups: newTourGen.matchups.map((m) => ({
+          equipeA: m.equipeAId,
+          equipeB: m.equipeBId,
+        })),
+      },
     });
   }));
 
@@ -256,6 +522,37 @@ export function createMatchsRouter(ctx: AppContext): Router {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+function collectPhaseResults(phase: Phase): MatchResultEntry[] {
+  const results: MatchResultEntry[] = [];
+  for (const tour of phase.tours) {
+    for (const match of tour.matchs) {
+      if (match.isBye) continue;
+      if (match.resultat) {
+        results.push({
+          matchId: match.id,
+          equipeAId: match.equipeAId,
+          equipeBId: match.equipeBId,
+          scoreA: match.score?.pointsA ?? 0,
+          scoreB: match.score?.pointsB ?? 0,
+          vainqueurId: match.resultat.vainqueur,
+        });
+      }
+    }
+  }
+  return results;
+}
+
+function collectPhaseEquipeIds(phase: Phase): string[] {
+  const equipeIds = new Set<string>();
+  for (const tour of phase.tours) {
+    for (const match of tour.matchs) {
+      equipeIds.add(match.equipeAId);
+      if (match.equipeBId) equipeIds.add(match.equipeBId);
+    }
+  }
+  return Array.from(equipeIds);
+}
 
 async function findMatch(ctx: AppContext, concoursId: string, matchId: string) {
   const concours = await ctx.concoursRepository.findById(concoursId);

@@ -39,6 +39,7 @@ export interface PhaseConfig {
   nbPoules?: number;
   taillePoule?: number;
   qualifiesParPoule?: number;
+  nbTours?: number;
 }
 
 export interface Matchup {
@@ -65,11 +66,20 @@ export interface PhaseContext {
 export interface TourGeneration {
   numero: number;
   matchups: Matchup[];
+  nom?: string;
+}
+
+export interface QualifiedEntry {
+  equipeId: EntityId;
+  pouleIndex: number;
+  rang: number; // 1 = 1er de poule, 2 = 2e de poule
 }
 
 export interface PhaseStrategy {
   generateTours(context: PhaseContext): TourGeneration[];
   isPhaseComplete(context: PhaseContext): boolean;
+  generateNextTour?(context: PhaseContext, currentTourNumero: number): TourGeneration | null;
+  getQualifies?(context: PhaseContext): QualifiedEntry[];
 }
 
 // ---------------------------------------------------------------------------

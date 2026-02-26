@@ -7,6 +7,7 @@ import {
   cloturerInscriptions,
   lancerTirage,
   annulerConcours,
+  genererTourSuivant,
 } from '@/api/concours';
 import type { ConcoursDetail } from '@/types/concours';
 
@@ -43,13 +44,21 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
   });
 
   const tirageMutation = useMutation({
-    mutationFn: () => lancerTirage(concours.id, { typePhase: 'POULES' }),
+    mutationFn: () => lancerTirage(concours.id, {}),
     onSuccess: invalidateAll,
   });
 
   const annulerMutation = useMutation({
     mutationFn: () => annulerConcours(concours.id),
     onSuccess: invalidateAll,
+  });
+
+  const tourSuivantMutation = useMutation({
+    mutationFn: () => genererTourSuivant(concours.id),
+    onSuccess: () => {
+      invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ['concours', concours.id, 'matchs'] });
+    },
   });
 
   const statut = concours.statut;
@@ -113,6 +122,16 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
               disabled={tirageMutation.isPending}
             >
               Lancer tirage
+            </Button>
+          )}
+          {statut === 'EN_COURS' && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => tourSuivantMutation.mutate()}
+              disabled={tourSuivantMutation.isPending}
+            >
+              {tourSuivantMutation.isPending ? 'En cours...' : 'Tour / phase suivant(e)'}
             </Button>
           )}
           {statut !== 'ANNULE' && statut !== 'TERMINE' && statut !== 'ARCHIVE' && (

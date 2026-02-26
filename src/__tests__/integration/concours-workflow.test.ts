@@ -102,35 +102,38 @@ describe('Workflow complet : concours de poules triplettes', () => {
 
     const poolStrategy = new PoolPhaseStrategy();
     const equipeIds = equipes.map((e) => e.id);
-    const tours = poolStrategy.generateTours({
+    const phaseContext = {
       phaseId: 'phase-1',
       equipeIds,
-      matchResults: [],
+      matchResults: [] as { matchId: string; equipeAId: string; equipeBId: string | null; scoreA: number; scoreB: number; vainqueurId: string | null }[],
       config: { nbPoules: 1 },
-    });
+    };
+    const tours = poolStrategy.generateTours(phaseContext);
 
-    expect(tours).toHaveLength(3); // 4 équipes → 3 tours
+    expect(tours).toHaveLength(1); // Seul le tour 1 est généré
 
     // ─── 6. Valider le tirage et démarrer ───
     concours.validerTirage();
     expect(concours.statut).toBe(StatutConcours.EN_COURS);
     phase.demarrer();
 
-    // ─── 7. Créer et jouer les matchs tour par tour ───
+    // ─── 7. Créer et jouer les matchs tour par tour (3 tours avec progression) ───
     const allMatchResults: { equipeAId: string; equipeBId: string; scoreA: number; scoreB: number; vainqueurId: string }[] = [];
 
     // Scores prédéfinis pour un scénario réaliste
     const scores = [
-      // Tour 1
+      // Tour 1 : A-B, C-D
       [{ a: 13, b: 8 }, { a: 5, b: 13 }],
-      // Tour 2
+      // Tour 2 : gagnants vs gagnants, perdants vs perdants
       [{ a: 13, b: 11 }, { a: 13, b: 7 }],
-      // Tour 3
-      [{ a: 10, b: 13 }, { a: 13, b: 6 }],
+      // Tour 3 : barrage
+      [{ a: 10, b: 13 }],
     ];
 
-    for (let tourIdx = 0; tourIdx < tours.length; tourIdx++) {
-      const tourGen = tours[tourIdx];
+    // Tour 1
+    const allTourGens = [tours[0]];
+
+    function playTour(tourGen: typeof tours[0], tourIdx: number) {
       const tour = new Tour(`tour-${tourIdx + 1}`, 'phase-1', tourGen.numero);
 
       for (let matchIdx = 0; matchIdx < tourGen.matchups.length; matchIdx++) {
@@ -143,7 +146,6 @@ describe('Workflow complet : concours de poules triplettes', () => {
       phase.ajouterTour(tour);
       tour.demarrer();
 
-      // Jouer chaque match
       for (let matchIdx = 0; matchIdx < tour.matchs.length; matchIdx++) {
         const match = tour.matchs[matchIdx] as Match;
         if (match.isBye) continue;
@@ -169,10 +171,32 @@ describe('Workflow complet : concours de poules triplettes', () => {
           scoreB: s.b,
           vainqueurId,
         });
+
+        phaseContext.matchResults.push({
+          matchId: match.id,
+          equipeAId: match.equipeAId,
+          equipeBId: match.equipeBId,
+          scoreA: s.a,
+          scoreB: s.b,
+          vainqueurId,
+        });
       }
 
       tour.terminer();
     }
+
+    // Jouer tour 1
+    playTour(allTourGens[0], 0);
+
+    // Générer et jouer tour 2
+    const tour2Gen = poolStrategy.generateNextTour(phaseContext, 1);
+    expect(tour2Gen).not.toBeNull();
+    playTour(tour2Gen!, 1);
+
+    // Générer et jouer tour 3 (barrage)
+    const tour3Gen = poolStrategy.generateNextTour(phaseContext, 2);
+    expect(tour3Gen).not.toBeNull();
+    playTour(tour3Gen!, 2);
 
     expect(phase.tours).toHaveLength(3);
 

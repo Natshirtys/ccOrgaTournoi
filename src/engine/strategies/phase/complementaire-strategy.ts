@@ -7,34 +7,30 @@ import {
 } from '../interfaces.js';
 import { EntityId } from '../../../shared/types.js';
 import { nextPowerOf2 } from '../draw/integral-draw-strategy.js';
+import { getRoundName } from './single-elimination-strategy.js';
 
 /**
- * Phase d'élimination directe (Simple KO).
+ * Phase complémentaire (consolation bracket).
  *
- * - Le premier tour est généré à partir des équipes
- * - Les tours suivants sont générés dynamiquement via generateNextTour()
- * - Les rounds sont nommés (16e, 8e, 1/4, 1/2, Finale)
+ * Reçoit les perdants du 1er tour du bracket principal
+ * et construit un bracket KO identique à SingleElimination.
  */
-export class SingleEliminationStrategy implements PhaseStrategy {
+export class ComplementaireStrategy implements PhaseStrategy {
   generateTours(context: PhaseContext): TourGeneration[] {
     const { equipeIds } = context;
 
     if (equipeIds.length < 2) {
-      throw new Error("L'élimination directe nécessite au moins 2 équipes");
+      throw new Error('La complémentaire nécessite au moins 2 équipes');
     }
 
-    // Ne générer que le tour 1
     const matchups = this.pairEquipes(equipeIds);
     const bracketSize = nextPowerOf2(equipeIds.length);
     const totalRounds = Math.log2(bracketSize);
-    const roundName = getRoundName(bracketSize, 1, totalRounds);
+    const roundName = 'Consolante — ' + getRoundName(bracketSize, 1, totalRounds);
 
     return [{ numero: 1, matchups, nom: roundName }];
   }
 
-  /**
-   * Génère le tour suivant à partir des vainqueurs du tour en cours.
-   */
   generateNextTour(context: PhaseContext, currentTourNumero: number): TourGeneration | null {
     const { equipeIds, matchResults } = context;
     const bracketSize = nextPowerOf2(equipeIds.length);
@@ -57,7 +53,7 @@ export class SingleEliminationStrategy implements PhaseStrategy {
         if (result?.vainqueurId) {
           winners.push(result.vainqueurId);
         } else {
-          return null; // Match pas encore joué
+          return null;
         }
       }
 
@@ -67,29 +63,9 @@ export class SingleEliminationStrategy implements PhaseStrategy {
     if (currentEquipes.length < 2) return null;
 
     const matchups = this.pairEquipes(currentEquipes);
-    const roundName = getRoundName(bracketSize, currentTourNumero + 1, totalRounds);
+    const roundName = 'Consolante — ' + getRoundName(bracketSize, currentTourNumero + 1, totalRounds);
 
     return { numero: currentTourNumero + 1, matchups, nom: roundName };
-  }
-
-  /**
-   * Retourne les perdants du premier tour (pour la complémentaire).
-   */
-  getFirstRoundLosers(context: PhaseContext): EntityId[] {
-    const { equipeIds, matchResults } = context;
-    const matchups = this.pairEquipes(equipeIds);
-    const losers: EntityId[] = [];
-
-    for (const matchup of matchups) {
-      if (matchup.equipeBId === null) continue; // BYE, pas de perdant
-      const result = findMatchResult(matchup, matchResults);
-      if (result?.vainqueurId) {
-        const loser = result.vainqueurId === result.equipeAId ? result.equipeBId! : result.equipeAId;
-        losers.push(loser);
-      }
-    }
-
-    return losers;
   }
 
   isPhaseComplete(context: PhaseContext): boolean {
@@ -119,22 +95,6 @@ export class SingleEliminationStrategy implements PhaseStrategy {
     }
 
     return matchups;
-  }
-}
-
-/**
- * Retourne le nom du round selon la taille du bracket et le numéro du tour.
- */
-export function getRoundName(_bracketSize: number, roundNumber: number, totalRounds: number): string {
-  const remainingRounds = totalRounds - roundNumber;
-
-  switch (remainingRounds) {
-    case 0: return 'Finale';
-    case 1: return 'Demi-finales';
-    case 2: return 'Quarts de finale';
-    case 3: return '8èmes de finale';
-    case 4: return '16èmes de finale';
-    default: return `Tour ${roundNumber}`;
   }
 }
 

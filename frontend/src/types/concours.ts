@@ -27,7 +27,7 @@ export interface ConcoursSummary {
   };
 }
 
-export type TypePhase = 'POULES' | 'SYSTEME_SUISSE' | 'CHAMPIONNAT' | 'ELIMINATION_SIMPLE';
+export type TypePhase = 'POULES' | 'SYSTEME_SUISSE' | 'CHAMPIONNAT' | 'ELIMINATION_SIMPLE' | 'CONSOLANTE';
 
 export type StatutMatch = 'PROGRAMME' | 'EN_COURS' | 'TERMINE' | 'FORFAIT';
 
@@ -63,6 +63,9 @@ export interface ConcoursDetail extends ConcoursSummary {
 export interface MatchDto {
   id: string;
   tourNumero: number;
+  tourNom?: string;
+  phaseId?: string;
+  phaseType?: string;
   terrainId?: string;
   equipeAId: string;
   equipeBId: string;
@@ -112,5 +115,5 @@ export interface DeclarerForfaitPayload {
 }
 
 export interface LancerTiragePayload {
-  typePhase: TypePhase;
+  nbPoules?: number;
 }

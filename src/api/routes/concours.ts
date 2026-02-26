@@ -15,6 +15,8 @@ import { TypeEquipe, TypePhase, CritereClassement, TypeQualification } from '../
 import { IntegralDrawStrategy } from '../../engine/strategies/draw/integral-draw-strategy.js';
 import { PoolPhaseStrategy } from '../../engine/strategies/phase/pool-phase-strategy.js';
 import { SingleEliminationStrategy } from '../../engine/strategies/phase/single-elimination-strategy.js';
+import { SwissSystemStrategy } from '../../engine/strategies/phase/swiss-system-strategy.js';
+import { TourGeneration, Matchup } from '../../engine/strategies/interfaces.js';
 
 // ─── Schemas Zod ────────────────────────────────────────────────────────────
 
@@ -39,9 +41,9 @@ const creerConcoursSchema = z.object({
 });
 
 const inscrireEquipeSchema = z.object({
-  equipeNom: z.string().min(1),
-  joueurIds: z.array(z.string().min(1)).default([]),
-  clubId: z.string().default(''),
+  nomEquipe: z.string().min(1),
+  joueurs: z.array(z.string().min(1)).default([]),
+  club: z.string().default(''),
   teteDeSerie: z.boolean().default(false),
 });
 
@@ -198,7 +200,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
 
     const data = req.body;
     const equipeId = `equipe-${concours.nbEquipesInscrites + 1}`;
-    const equipe = new Equipe(equipeId, data.joueurIds, data.clubId, data.equipeNom);
+    const equipe = new Equipe(equipeId, data.joueurs, data.club, data.nomEquipe);
 
     const inscriptionId = `inscription-${concours.nbEquipesInscrites + 1}`;
     const inscription = new Inscription(inscriptionId, concours.id, equipe, new Date(), undefined, data.teteDeSerie);
@@ -209,7 +211,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
     res.status(201).json({
       inscriptionId,
       equipeId,
-      equipeNom: data.equipeNom,
+      equipeNom: data.nomEquipe,
       nbInscrites: concours.nbEquipesInscrites,
     });
   }));
@@ -219,17 +221,32 @@ export function createConcoursRouter(ctx: AppContext): Router {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));
     if (!concours) throw ApiError.notFound('Concours non trouvé');
 
-    // Lancer le tirage (vérifie les invariants)
+    // Récupérer les équipes inscrites (avant lancerTirage pour validation)
+    const equipeIds = concours.inscriptionsActives.map((i) => i.equipeId);
+    const phaseType = concours.formule.phases[0].type;
+    const nbPoules = req.body.nbPoules ?? (phaseType === TypePhase.POULES ? Math.floor(equipeIds.length / 4) : undefined);
+
+    // Validation poules : chaque poule doit contenir exactement 4 équipes
+    if (phaseType === TypePhase.POULES) {
+      if (equipeIds.length % 4 !== 0) {
+        throw ApiError.badRequest(
+          `Le nombre d'équipes (${equipeIds.length}) doit être un multiple de 4 pour les poules`
+        );
+      }
+      if (nbPoules && equipeIds.length / nbPoules !== 4) {
+        throw ApiError.badRequest(
+          `Avec ${nbPoules} poules et ${equipeIds.length} équipes, les poules n'auront pas 4 équipes chacune`
+        );
+      }
+    }
+
+    // Lancer le tirage (vérifie les invariants de statut)
     concours.lancerTirage();
 
-    // Récupérer les équipes inscrites
-    const equipeIds = concours.inscriptionsActives.map((i) => i.equipeId);
     const tetesDeSerieIds = concours.inscriptionsActives
       .filter((i) => i.teteDeSerie)
       .map((i) => i.equipeId);
 
-    // Tirage intégral
-    const nbPoules = req.body.nbPoules;
     const drawStrategy = new IntegralDrawStrategy(nbPoules);
     const drawResult = drawStrategy.execute({
       equipeIds,
@@ -237,32 +254,56 @@ export function createConcoursRouter(ctx: AppContext): Router {
       tetesDeSerieIds: tetesDeSerieIds.length > 0 ? tetesDeSerieIds : undefined,
     });
 
-    // Créer la phase
-    const phaseType = concours.formule.phases[0].type;
-    const phaseConfig = concours.formule.phases[0];
+    // Créer la phase — stocker nbPoules et assignments dans constraints pour reconstruction
+    const baseConfig = concours.formule.phases[0];
+    const phaseConfig = new PhaseDefinition(
+      baseConfig.type,
+      baseConfig.drawStrategy,
+      baseConfig.rankingCriteria,
+      baseConfig.tiebreakChain,
+      baseConfig.qualificationRule,
+      {
+        ...baseConfig.constraints,
+        nbPoules: nbPoules ?? baseConfig.constraints.nbPoules,
+      },
+    );
     const phaseId = `phase-${concours.phases.length + 1}`;
     const phase = new Phase(phaseId, concours.id, phaseType, concours.phases.length + 1, phaseConfig);
     concours.ajouterPhase(phase);
 
     // Générer les tours selon le type de phase
-    let phaseStrategy;
-    if (phaseType === TypePhase.POULES) {
-      phaseStrategy = new PoolPhaseStrategy(drawResult.assignments);
-    } else {
-      phaseStrategy = new SingleEliminationStrategy();
-    }
-
-    const tours = phaseStrategy.generateTours({
+    const assignedEquipeIds = drawResult.assignments.map((a) => a.equipeId);
+    const phaseContext = {
       phaseId,
-      equipeIds: drawResult.assignments.map((a) => a.equipeId),
-      matchResults: [],
+      equipeIds: assignedEquipeIds,
+      matchResults: [] as never[],
       config: { nbPoules },
-    });
+    };
+
+    let tours;
+    if (phaseType === TypePhase.POULES) {
+      // POULES : seulement tour 1 (tours 2-3 générés dynamiquement)
+      const strategy = new PoolPhaseStrategy(drawResult.assignments);
+      tours = strategy.generateTours(phaseContext);
+    } else if (phaseType === TypePhase.ELIMINATION_SIMPLE) {
+      // ELIMINATION : seulement tour 1
+      const strategy = new SingleEliminationStrategy();
+      tours = strategy.generateTours(phaseContext);
+    } else if (phaseType === TypePhase.CHAMPIONNAT) {
+      // CHAMPIONNAT : round-robin complet (tous les tours générés)
+      tours = generateRoundRobinTours(assignedEquipeIds);
+    } else if (phaseType === TypePhase.SYSTEME_SUISSE) {
+      // SUISSE : seulement tour 1 (aléatoire)
+      const strategy = new SwissSystemStrategy();
+      tours = strategy.generateTours(phaseContext);
+    } else {
+      throw ApiError.badRequest(`Type de phase non supporté : ${phaseType}`);
+    }
 
     // Créer les entités Tour + Match
     for (const tourGen of tours) {
       const tourId = `${phaseId}-tour-${tourGen.numero}`;
-      const tour = new Tour(tourId, phaseId, tourGen.numero);
+      const tour = new Tour(tourId, phaseId, tourGen.numero, undefined, [], tourGen.nom);
 
       for (let i = 0; i < tourGen.matchups.length; i++) {
         const mu = tourGen.matchups[i];
@@ -287,6 +328,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
       nbTours: tours.length,
       tours: tours.map((t) => ({
         numero: t.numero,
+        nom: t.nom,
         matchups: t.matchups.map((m) => ({
           equipeA: m.equipeAId,
           equipeB: m.equipeBId,
@@ -316,4 +358,39 @@ export function createConcoursRouter(ctx: AppContext): Router {
   }));
 
   return router;
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Génère un round-robin complet pour le championnat (tous les tours).
+ */
+function generateRoundRobinTours(equipeIds: string[]): TourGeneration[] {
+  const equipes = [...equipeIds];
+  const hasGhost = equipes.length % 2 !== 0;
+  if (hasGhost) equipes.push('__BYE__');
+
+  const n = equipes.length;
+  const tours: TourGeneration[] = [];
+
+  for (let round = 0; round < n - 1; round++) {
+    const matchups: Matchup[] = [];
+
+    for (let i = 0; i < n / 2; i++) {
+      const home = i === 0 ? equipes[0] : equipes[((round + i - 1) % (n - 1)) + 1];
+      const away = equipes[((round + (n / 2) - 1 + (n / 2 - i) - 1) % (n - 1)) + 1];
+
+      if (home === '__BYE__') {
+        matchups.push({ equipeAId: away, equipeBId: null });
+      } else if (away === '__BYE__') {
+        matchups.push({ equipeAId: home, equipeBId: null });
+      } else {
+        matchups.push({ equipeAId: home, equipeBId: away });
+      }
+    }
+
+    tours.push({ numero: round + 1, matchups, nom: `Journée ${round + 1}` });
+  }
+
+  return tours;
 }

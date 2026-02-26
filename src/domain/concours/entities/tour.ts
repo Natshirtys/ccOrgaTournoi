@@ -5,6 +5,7 @@ import { Match } from './match.js';
 export class Tour extends Entity {
   private _statut: StatutTour;
   private _matchs: Match[];
+  private _nom: string | undefined;
 
   constructor(
     id: EntityId,
@@ -12,10 +13,16 @@ export class Tour extends Entity {
     public readonly numero: number,
     statut: StatutTour = StatutTour.EN_ATTENTE,
     matchs: Match[] = [],
+    nom?: string,
   ) {
     super(id);
     this._statut = statut;
     this._matchs = matchs;
+    this._nom = nom;
+  }
+
+  get nom(): string | undefined {
+    return this._nom;
   }
 
   get statut(): StatutTour {
