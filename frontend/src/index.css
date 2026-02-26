@@ -50,6 +50,15 @@
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
+
+  /* Success (qualifié) */
+  --color-success: hsl(142 71% 45%);
+  --color-success-foreground: hsl(0 0% 100%);
+
+  /* Bracket KO */
+  --color-bracket-bg: hsl(225 50% 25%);
+  --color-bracket-card: hsl(225 40% 35%);
+  --color-bracket-line: hsl(45 90% 55%);
 }
 
 @layer base {
@@ -67,4 +76,45 @@
     min-height: 100vh;
     font-family: system-ui, -apple-system, sans-serif;
   }
+}
+
+/* Bracket KO — connector lines */
+.bracket-connector {
+  position: absolute;
+  right: -1rem;
+  top: 50%;
+  width: 1rem;
+  height: 2px;
+  background-color: var(--color-bracket-line);
+  pointer-events: none;
+}
+
+.bracket-match-wrapper {
+  position: relative;
+}
+
+/* Vertical connectors between pairs */
+.bracket-connector[data-position="top"]::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 2px;
+  height: calc(100% + 2rem);
+  background-color: var(--color-bracket-line);
+}
+
+.bracket-connector[data-position="bottom"]::after {
+  display: none;
+}
+
+/* Horizontal line from vertical bar to next round */
+.bracket-connector[data-position="top"]::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: calc(50% + 1rem);
+  width: 0.5rem;
+  height: 2px;
+  background-color: var(--color-bracket-line);
 }

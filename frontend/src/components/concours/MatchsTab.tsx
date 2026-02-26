@@ -11,6 +11,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { MatchRow } from './MatchRow';
+import { PoolGroupCard } from './PoolGroupCard';
+import { KnockoutBracket } from './KnockoutBracket';
 import { fetchMatchs } from '@/api/matchs';
 import { exportFeuillesDeMatch } from '@/lib/pdf-export';
 import type { ConcoursDetail, MatchDto } from '@/types/concours';
@@ -25,6 +27,47 @@ const PHASE_LABELS: Record<string, string> = {
 
 interface MatchsTabProps {
   concours: ConcoursDetail;
+}
+
+interface PoolGroup {
+  equipeIds: string[];
+  matchs: MatchDto[];
+}
+
+function reconstructPools(matchs: MatchDto[]): PoolGroup[] {
+  // Tour 1 matchs define the pools: each pair of consecutive matchs = 1 poule of 4
+  const tour1 = matchs
+    .filter((m) => m.tourNumero === 1)
+    .sort((a, b) => {
+      // Sort by match order (assuming API returns them in order, fallback to id)
+      return a.id.localeCompare(b.id);
+    });
+
+  const pools: PoolGroup[] = [];
+
+  for (let i = 0; i < tour1.length; i += 2) {
+    const m1 = tour1[i];
+    const m2 = tour1[i + 1];
+
+    const equipeIds: string[] = [];
+    if (m1) {
+      equipeIds.push(m1.equipeAId, m1.equipeBId);
+    }
+    if (m2) {
+      equipeIds.push(m2.equipeAId, m2.equipeBId);
+    }
+
+    const poolEquipeSet = new Set(equipeIds);
+
+    // Collect all matchs involving these teams
+    const poolMatchs = matchs.filter(
+      (m) => poolEquipeSet.has(m.equipeAId) && poolEquipeSet.has(m.equipeBId),
+    );
+
+    pools.push({ equipeIds, matchs: poolMatchs });
+  }
+
+  return pools;
 }
 
 export function MatchsTab({ concours }: MatchsTabProps) {
@@ -73,6 +116,24 @@ export function MatchsTab({ concours }: MatchsTabProps) {
     }));
   }, [data]);
 
+  // Flat matchs par phase pour les rendus spécialisés
+  const matchsByPhase = useMemo(() => {
+    const matchs = data?.data ?? [];
+    const phases = new Map<string, { phaseType: string; matchs: MatchDto[] }>();
+
+    for (const m of matchs) {
+      const phaseId = m.phaseId ?? 'default';
+      const phaseType = m.phaseType ?? '';
+
+      if (!phases.has(phaseId)) {
+        phases.set(phaseId, { phaseType, matchs: [] });
+      }
+      phases.get(phaseId)!.matchs.push(m);
+    }
+
+    return phases;
+  }, [data]);
+
   if (isLoading) {
     return <p className="py-8 text-center text-muted-foreground">Chargement des matchs...</p>;
   }
@@ -96,49 +157,120 @@ export function MatchsTab({ concours }: MatchsTabProps) {
           Exporter feuilles de match
         </Button>
       </div>
-      {matchsByPhaseAndTour.map(({ phaseId, phaseType, tours }) => (
-        <div key={phaseId} className="space-y-4">
-          {hasMultiplePhases && (
-            <h3 className="text-lg font-semibold">
-              {PHASE_LABELS[phaseType] ?? phaseType}
-            </h3>
-          )}
-          {tours.map(({ tourNum, nom, matchs }) => (
-            <Card key={`${phaseId}-${tourNum}`}>
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  {nom ?? `Tour ${tourNum}`}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Équipe A</TableHead>
-                      <TableHead className="text-center w-12" />
-                      <TableHead>Équipe B</TableHead>
-                      <TableHead className="text-center">Score</TableHead>
-                      <TableHead>Statut</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {matchs.map((m) => (
-                      <MatchRow
-                        key={m.id}
-                        match={m}
-                        concoursId={concours.id}
-                        equipeANom={equipeLookup.get(m.equipeAId) ?? m.equipeAId}
-                        equipeBNom={equipeLookup.get(m.equipeBId) ?? m.equipeBId}
-                      />
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      {matchsByPhaseAndTour.map(({ phaseId, phaseType, tours }) => {
+        const phaseData = matchsByPhase.get(phaseId);
+
+        return (
+          <div key={phaseId} className="space-y-4">
+            {hasMultiplePhases && (
+              <h3 className="text-lg font-semibold">
+                {PHASE_LABELS[phaseType] ?? phaseType}
+              </h3>
+            )}
+
+            {/* Rendu spécialisé Poules */}
+            {phaseType === 'POULES' && phaseData ? (
+              <PoolsPhaseView
+                matchs={phaseData.matchs}
+                equipeLookup={equipeLookup}
+                concoursId={concours.id}
+              />
+            ) : /* Rendu spécialisé KO */
+            phaseType === 'ELIMINATION_SIMPLE' && phaseData ? (
+              <KnockoutBracket
+                matchs={phaseData.matchs}
+                concoursId={concours.id}
+                equipeLookup={equipeLookup}
+              />
+            ) : (
+              /* Fallback : rendu tableau classique */
+              <TablePhaseView
+                tours={tours}
+                equipeLookup={equipeLookup}
+                concoursId={concours.id}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* --- Sous-composants de rendu --- */
+
+function PoolsPhaseView({
+  matchs,
+  equipeLookup,
+  concoursId,
+}: {
+  matchs: MatchDto[];
+  equipeLookup: Map<string, string>;
+  concoursId: string;
+}) {
+  const pools = useMemo(() => reconstructPools(matchs), [matchs]);
+
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      {pools.map((pool, idx) => (
+        <PoolGroupCard
+          key={idx}
+          pouleIndex={idx}
+          equipeIds={pool.equipeIds}
+          matchs={pool.matchs}
+          equipeLookup={equipeLookup}
+          concoursId={concoursId}
+        />
       ))}
     </div>
+  );
+}
+
+function TablePhaseView({
+  tours,
+  equipeLookup,
+  concoursId,
+}: {
+  tours: { tourNum: number; nom?: string; matchs: MatchDto[] }[];
+  equipeLookup: Map<string, string>;
+  concoursId: string;
+}) {
+  return (
+    <>
+      {tours.map(({ tourNum, nom, matchs }) => (
+        <Card key={tourNum}>
+          <CardHeader>
+            <CardTitle className="text-lg">
+              {nom ?? `Tour ${tourNum}`}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Équipe A</TableHead>
+                  <TableHead className="text-center w-12" />
+                  <TableHead>Équipe B</TableHead>
+                  <TableHead className="text-center">Score</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {matchs.map((m) => (
+                  <MatchRow
+                    key={m.id}
+                    match={m}
+                    concoursId={concoursId}
+                    equipeANom={equipeLookup.get(m.equipeAId) ?? m.equipeAId}
+                    equipeBNom={equipeLookup.get(m.equipeBId) ?? m.equipeBId}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ))}
+    </>
   );
 }
