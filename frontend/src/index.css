@@ -79,42 +79,39 @@
 }
 
 /* Bracket KO — connector lines */
+.bracket-match-wrapper {
+  position: relative;
+}
+
+/* Horizontal line going right from the card */
 .bracket-connector {
   position: absolute;
-  right: -1rem;
+  right: -2.5rem;
   top: 50%;
-  width: 1rem;
+  width: 2.5rem;
   height: 2px;
   background-color: var(--color-bracket-line);
   pointer-events: none;
 }
 
-.bracket-match-wrapper {
-  position: relative;
-}
-
-/* Vertical connectors between pairs */
+/* Vertical bar connecting a pair of matches ("top" match) */
 .bracket-connector[data-position="top"]::after {
   content: "";
   position: absolute;
   right: 0;
   top: 0;
   width: 2px;
-  height: calc(100% + 2rem);
+  height: var(--connector-height, 3rem);
   background-color: var(--color-bracket-line);
 }
 
+/* "bottom" match: vertical bar going upward */
 .bracket-connector[data-position="bottom"]::after {
-  display: none;
-}
-
-/* Horizontal line from vertical bar to next round */
-.bracket-connector[data-position="top"]::before {
   content: "";
   position: absolute;
   right: 0;
-  top: calc(50% + 1rem);
-  width: 0.5rem;
-  height: 2px;
+  bottom: 0;
+  width: 2px;
+  height: var(--connector-height, 3rem);
   background-color: var(--color-bracket-line);
 }

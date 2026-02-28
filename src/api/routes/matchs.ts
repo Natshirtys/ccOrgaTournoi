@@ -149,8 +149,11 @@ export function createMatchsRouter(ctx: AppContext): Router {
       throw ApiError.badRequest('Aucune phase n\'existe encore');
     }
 
-    // Trouver la phase en cours
-    let phase = concours.phases.find((p) => p.statut === StatutPhase.EN_COURS);
+    // Trouver la phase en cours (optionnellement ciblée par phaseId)
+    const requestedPhaseId = req.body?.phaseId;
+    let phase = requestedPhaseId
+      ? concours.phases.find((p) => p.id === requestedPhaseId && p.statut === StatutPhase.EN_COURS)
+      : concours.phases.find((p) => p.statut === StatutPhase.EN_COURS);
     if (!phase) throw ApiError.badRequest('Aucune phase en cours');
 
     const dernierTour = phase.dernierTour;

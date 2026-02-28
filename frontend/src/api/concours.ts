@@ -48,6 +48,9 @@ export function annulerConcours(id: string): Promise<{ statut: string }> {
   return apiFetch(`/concours/${id}/annuler`, { method: 'POST' });
 }
 
-export function genererTourSuivant(id: string): Promise<void> {
-  return apiFetch(`/concours/${id}/generer-tour-suivant`, { method: 'POST' });
+export function genererTourSuivant(id: string, phaseId?: string): Promise<void> {
+  return apiFetch(`/concours/${id}/generer-tour-suivant`, {
+    method: 'POST',
+    body: phaseId ? JSON.stringify({ phaseId }) : undefined,
+  });
 }

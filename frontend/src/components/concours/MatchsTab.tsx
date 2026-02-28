@@ -19,8 +19,8 @@ import type { ConcoursDetail, MatchDto } from '@/types/concours';
 
 const PHASE_LABELS: Record<string, string> = {
   POULES: 'Phase de poules',
-  ELIMINATION_SIMPLE: 'Élimination directe',
-  CONSOLANTE: 'Consolante',
+  ELIMINATION_SIMPLE: 'Tableau Principal',
+  CONSOLANTE: 'Tableau Complémentaire',
   CHAMPIONNAT: 'Championnat',
   SYSTEME_SUISSE: 'Système Suisse',
 };
@@ -163,9 +163,17 @@ export function MatchsTab({ concours }: MatchsTabProps) {
         return (
           <div key={phaseId} className="space-y-4">
             {hasMultiplePhases && (
-              <h3 className="text-lg font-semibold">
-                {PHASE_LABELS[phaseType] ?? phaseType}
-              </h3>
+              <div className={`rounded-lg px-4 py-2 ${
+                phaseType === 'ELIMINATION_SIMPLE'
+                  ? 'bg-[var(--color-bracket-bg)] text-white'
+                  : phaseType === 'CONSOLANTE'
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-muted'
+              }`}>
+                <h3 className="text-lg font-bold tracking-wide uppercase">
+                  {PHASE_LABELS[phaseType] ?? phaseType}
+                </h3>
+              </div>
             )}
 
             {/* Rendu spécialisé Poules */}
@@ -175,12 +183,14 @@ export function MatchsTab({ concours }: MatchsTabProps) {
                 equipeLookup={equipeLookup}
                 concoursId={concours.id}
               />
-            ) : /* Rendu spécialisé KO */
-            phaseType === 'ELIMINATION_SIMPLE' && phaseData ? (
+            ) : /* Rendu spécialisé KO (principal + consolante) */
+            (phaseType === 'ELIMINATION_SIMPLE' || phaseType === 'CONSOLANTE') && phaseData ? (
               <KnockoutBracket
                 matchs={phaseData.matchs}
                 concoursId={concours.id}
                 equipeLookup={equipeLookup}
+                variant={phaseType === 'CONSOLANTE' ? 'consolante' : 'principal'}
+                phaseId={phaseId}
               />
             ) : (
               /* Fallback : rendu tableau classique */
