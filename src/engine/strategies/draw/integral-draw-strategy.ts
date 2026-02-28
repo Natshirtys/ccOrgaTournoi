@@ -15,7 +15,7 @@ export class IntegralDrawStrategy implements DrawStrategy {
   ) {}
 
   execute(context: DrawContext): DrawResult {
-    const { equipeIds, tetesDeSerieIds } = context;
+    const { equipeIds, tetesDeSerieIds, constraints } = context;
 
     if (equipeIds.length < 2) {
       throw new Error('Le tirage nécessite au moins 2 équipes');
@@ -27,7 +27,7 @@ export class IntegralDrawStrategy implements DrawStrategy {
     const resteShuffled = this.shuffleFn([...reste]);
 
     if (this.pouleCount && this.pouleCount > 0) {
-      return this.repartirEnPoules(tds, resteShuffled, this.pouleCount);
+      return this.repartirEnPoules(tds, resteShuffled, this.pouleCount, constraints?.clubsByEquipe);
     }
 
     return this.repartirBracket(tds, resteShuffled);
@@ -35,43 +35,78 @@ export class IntegralDrawStrategy implements DrawStrategy {
 
   /**
    * Répartition en poules avec placement serpentin des têtes de série.
+   * Si clubsByEquipe est fourni et non vide, active la protection club (best-effort).
    */
   private repartirEnPoules(
     tds: EntityId[],
     reste: EntityId[],
     nbPoules: number,
+    clubsByEquipe?: Map<EntityId, EntityId>,
   ): DrawResult {
     const assignments: DrawAssignment[] = [];
     let position = 0;
+    const clubProtection = clubsByEquipe && clubsByEquipe.size > 0;
+
+    // Tracker pour la protection club : clubs déjà présents dans chaque poule
+    const pouleClubs: Set<EntityId>[] = Array.from({ length: nbPoules }, () => new Set());
+    const pouleSize: number[] = Array.from({ length: nbPoules }, () => 0);
+    const maxSize = Math.ceil((tds.length + reste.length) / nbPoules);
 
     // Placement serpentin des têtes de série
     for (let i = 0; i < tds.length; i++) {
       const pouleIndex = i % nbPoules;
-      assignments.push({
-        equipeId: tds[i],
-        position: position++,
-        pouleIndex,
-      });
+      assignments.push({ equipeId: tds[i], position: position++, pouleIndex });
+      const club = clubsByEquipe?.get(tds[i]);
+      if (club) pouleClubs[pouleIndex].add(club);
+      pouleSize[pouleIndex]++;
     }
 
-    // Complétion aléatoire du reste
-    let pouleIndex = tds.length % nbPoules;
-    let direction = 1; // serpentin : alterne la direction
+    if (!clubProtection) {
+      // Complétion aléatoire du reste (serpentin original)
+      let pouleIndex = tds.length % nbPoules;
+      let direction = 1;
 
-    for (const equipeId of reste) {
-      assignments.push({
-        equipeId,
-        position: position++,
-        pouleIndex,
-      });
+      for (const equipeId of reste) {
+        assignments.push({ equipeId, position: position++, pouleIndex });
 
-      pouleIndex += direction;
-      if (pouleIndex >= nbPoules) {
-        pouleIndex = nbPoules - 1;
-        direction = -1;
-      } else if (pouleIndex < 0) {
-        pouleIndex = 0;
-        direction = 1;
+        pouleIndex += direction;
+        if (pouleIndex >= nbPoules) {
+          pouleIndex = nbPoules - 1;
+          direction = -1;
+        } else if (pouleIndex < 0) {
+          pouleIndex = 0;
+          direction = 1;
+        }
+      }
+    } else {
+      // Protection club : placement best-effort évitant les équipes du même club
+      for (const equipeId of reste) {
+        const clubId = clubsByEquipe!.get(equipeId);
+
+        // Chercher une poule avec de la place et sans conflit de club
+        let bestPoule = -1;
+        for (let p = 0; p < nbPoules; p++) {
+          if (pouleSize[p] < maxSize && (!clubId || !pouleClubs[p].has(clubId))) {
+            bestPoule = p;
+            break;
+          }
+        }
+
+        // Fallback : n'importe quelle poule avec de la place
+        if (bestPoule === -1) {
+          for (let p = 0; p < nbPoules; p++) {
+            if (pouleSize[p] < maxSize) {
+              bestPoule = p;
+              break;
+            }
+          }
+        }
+
+        if (bestPoule === -1) bestPoule = 0;
+
+        assignments.push({ equipeId, position: position++, pouleIndex: bestPoule });
+        if (clubId) pouleClubs[bestPoule].add(clubId);
+        pouleSize[bestPoule]++;
       }
     }
 

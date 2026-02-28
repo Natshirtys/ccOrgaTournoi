@@ -21,9 +21,22 @@ const PHASE_LABELS: Record<string, string> = {
   POULES: 'Phase de poules',
   ELIMINATION_SIMPLE: 'Tableau Principal',
   CONSOLANTE: 'Tableau Complémentaire',
-  CHAMPIONNAT: 'Championnat',
+  CHAMPIONNAT: 'Phase de poules',
   SYSTEME_SUISSE: 'Système Suisse',
 };
+
+// Couleurs des headers par type de phase et nom
+function getPhaseHeaderClass(phaseType: string, phaseNom?: string): string {
+  if (phaseType === 'CHAMPIONNAT') return 'bg-muted';
+  if (phaseType === 'CONSOLANTE') return 'bg-amber-600 text-white';
+  if (phaseType === 'ELIMINATION_SIMPLE') {
+    if (phaseNom === 'Championnat A') return 'bg-green-700 text-white';
+    if (phaseNom === 'Championnat B') return 'bg-blue-700 text-white';
+    if (phaseNom === 'Championnat C') return 'bg-orange-600 text-white';
+    return 'bg-[var(--color-bracket-bg)] text-white';
+  }
+  return 'bg-muted';
+}
 
 interface MatchsTabProps {
   concours: ConcoursDetail;
@@ -38,10 +51,7 @@ function reconstructPools(matchs: MatchDto[]): PoolGroup[] {
   // Tour 1 matchs define the pools: each pair of consecutive matchs = 1 poule of 4
   const tour1 = matchs
     .filter((m) => m.tourNumero === 1)
-    .sort((a, b) => {
-      // Sort by match order (assuming API returns them in order, fallback to id)
-      return a.id.localeCompare(b.id);
-    });
+    .sort((a, b) => a.id.localeCompare(b.id));
 
   const pools: PoolGroup[] = [];
 
@@ -50,16 +60,10 @@ function reconstructPools(matchs: MatchDto[]): PoolGroup[] {
     const m2 = tour1[i + 1];
 
     const equipeIds: string[] = [];
-    if (m1) {
-      equipeIds.push(m1.equipeAId, m1.equipeBId);
-    }
-    if (m2) {
-      equipeIds.push(m2.equipeAId, m2.equipeBId);
-    }
+    if (m1) equipeIds.push(m1.equipeAId, m1.equipeBId);
+    if (m2) equipeIds.push(m2.equipeAId, m2.equipeBId);
 
     const poolEquipeSet = new Set(equipeIds);
-
-    // Collect all matchs involving these teams
     const poolMatchs = matchs.filter(
       (m) => poolEquipeSet.has(m.equipeAId) && poolEquipeSet.has(m.equipeBId),
     );
@@ -85,17 +89,26 @@ export function MatchsTab({ concours }: MatchsTabProps) {
     return map;
   }, [concours.inscriptions]);
 
+  // Map phaseId → nom depuis concours.phases
+  const phaseNomLookup = useMemo(() => {
+    const map = new Map<string, string | undefined>();
+    for (const p of concours.phases) {
+      map.set(p.id, p.nom);
+    }
+    return map;
+  }, [concours.phases]);
+
   // Grouper par phase puis par tour
   const matchsByPhaseAndTour = useMemo(() => {
     const matchs = data?.data ?? [];
-    const phases = new Map<string, { phaseType: string; tours: Map<number, { nom?: string; matchs: MatchDto[] }> }>();
+    const phases = new Map<string, { phaseType: string; phaseNom?: string; tours: Map<number, { nom?: string; matchs: MatchDto[] }> }>();
 
     for (const m of matchs) {
       const phaseId = m.phaseId ?? 'default';
       const phaseType = m.phaseType ?? '';
 
       if (!phases.has(phaseId)) {
-        phases.set(phaseId, { phaseType, tours: new Map() });
+        phases.set(phaseId, { phaseType, phaseNom: phaseNomLookup.get(phaseId), tours: new Map() });
       }
 
       const phase = phases.get(phaseId)!;
@@ -107,32 +120,33 @@ export function MatchsTab({ concours }: MatchsTabProps) {
       phase.tours.get(tourNum)!.matchs.push(m);
     }
 
-    return Array.from(phases.entries()).map(([phaseId, { phaseType, tours }]) => ({
+    return Array.from(phases.entries()).map(([phaseId, { phaseType, phaseNom, tours }]) => ({
       phaseId,
       phaseType,
+      phaseNom,
       tours: Array.from(tours.entries())
         .sort(([a], [b]) => a - b)
         .map(([tourNum, data]) => ({ tourNum, ...data })),
     }));
-  }, [data]);
+  }, [data, phaseNomLookup]);
 
   // Flat matchs par phase pour les rendus spécialisés
   const matchsByPhase = useMemo(() => {
     const matchs = data?.data ?? [];
-    const phases = new Map<string, { phaseType: string; matchs: MatchDto[] }>();
+    const phases = new Map<string, { phaseType: string; phaseNom?: string; matchs: MatchDto[] }>();
 
     for (const m of matchs) {
       const phaseId = m.phaseId ?? 'default';
       const phaseType = m.phaseType ?? '';
 
       if (!phases.has(phaseId)) {
-        phases.set(phaseId, { phaseType, matchs: [] });
+        phases.set(phaseId, { phaseType, phaseNom: phaseNomLookup.get(phaseId), matchs: [] });
       }
       phases.get(phaseId)!.matchs.push(m);
     }
 
     return phases;
-  }, [data]);
+  }, [data, phaseNomLookup]);
 
   if (isLoading) {
     return <p className="py-8 text-center text-muted-foreground">Chargement des matchs...</p>;
@@ -157,33 +171,38 @@ export function MatchsTab({ concours }: MatchsTabProps) {
           Exporter feuilles de match
         </Button>
       </div>
-      {matchsByPhaseAndTour.map(({ phaseId, phaseType, tours }) => {
+      {matchsByPhaseAndTour.map(({ phaseId, phaseType, phaseNom, tours }) => {
         const phaseData = matchsByPhase.get(phaseId);
+        const displayLabel = phaseNom ?? PHASE_LABELS[phaseType] ?? phaseType;
+        const headerClass = getPhaseHeaderClass(phaseType, phaseNom);
 
         return (
           <div key={phaseId} className="space-y-4">
             {hasMultiplePhases && (
-              <div className={`rounded-lg px-4 py-2 ${
-                phaseType === 'ELIMINATION_SIMPLE'
-                  ? 'bg-[var(--color-bracket-bg)] text-white'
-                  : phaseType === 'CONSOLANTE'
-                    ? 'bg-amber-600 text-white'
-                    : 'bg-muted'
-              }`}>
+              <div className={`rounded-lg px-4 py-2 ${headerClass}`}>
                 <h3 className="text-lg font-bold tracking-wide uppercase">
-                  {PHASE_LABELS[phaseType] ?? phaseType}
+                  {displayLabel}
                 </h3>
               </div>
             )}
 
-            {/* Rendu spécialisé Poules */}
+            {/* Rendu spécialisé Poules GSL */}
             {phaseType === 'POULES' && phaseData ? (
               <PoolsPhaseView
                 matchs={phaseData.matchs}
                 equipeLookup={equipeLookup}
                 concoursId={concours.id}
+                mode="gsl"
               />
-            ) : /* Rendu spécialisé KO (principal + consolante) */
+            ) : /* Rendu spécialisé Championnat (poules round-robin) */
+            phaseType === 'CHAMPIONNAT' && phaseData ? (
+              <PoolsPhaseView
+                matchs={phaseData.matchs}
+                equipeLookup={equipeLookup}
+                concoursId={concours.id}
+                mode="roundrobin"
+              />
+            ) : /* Rendu spécialisé KO */
             (phaseType === 'ELIMINATION_SIMPLE' || phaseType === 'CONSOLANTE') && phaseData ? (
               <KnockoutBracket
                 matchs={phaseData.matchs}
@@ -215,10 +234,12 @@ function PoolsPhaseView({
   matchs,
   equipeLookup,
   concoursId,
+  mode,
 }: {
   matchs: MatchDto[];
   equipeLookup: Map<string, string>;
   concoursId: string;
+  mode: 'gsl' | 'roundrobin';
 }) {
   const pools = useMemo(() => reconstructPools(matchs), [matchs]);
 
@@ -232,6 +253,7 @@ function PoolsPhaseView({
           matchs={pool.matchs}
           equipeLookup={equipeLookup}
           concoursId={concoursId}
+          mode={mode}
         />
       ))}
     </div>

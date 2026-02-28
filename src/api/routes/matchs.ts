@@ -12,6 +12,7 @@ import { Classement, LigneClassement } from '../../domain/concours/entities/clas
 import { PointsRankingStrategy } from '../../engine/strategies/ranking/points-ranking-strategy.js';
 import { RankingEntry, MatchResultEntry, TourGeneration } from '../../engine/strategies/interfaces.js';
 import { PoolPhaseStrategy, buildKoCrossMatchups } from '../../engine/strategies/phase/pool-phase-strategy.js';
+import { RoundRobinPoolStrategy, buildSymmetricKoMatchups } from '../../engine/strategies/phase/round-robin-pool-strategy.js';
 import { SingleEliminationStrategy } from '../../engine/strategies/phase/single-elimination-strategy.js';
 import { ComplementaireStrategy } from '../../engine/strategies/phase/complementaire-strategy.js';
 import { SwissSystemStrategy } from '../../engine/strategies/phase/swiss-system-strategy.js';
@@ -59,6 +60,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
             id: match.id,
             phaseId: phase.id,
             phaseType: phase.type,
+            phaseNom: phase.nom,
             tourId: tour.id,
             tourNumero: tour.numero,
             tourNom: tour.nom,
@@ -428,7 +430,98 @@ export function createMatchsRouter(ctx: AppContext): Router {
         return;
       }
     } else if (phaseType === TypePhase.CHAMPIONNAT) {
-      throw ApiError.badRequest('Le championnat génère tous les tours au tirage, pas de progression dynamique');
+      const nbPoules = phase.config.constraints?.nbPoules ?? Math.floor(phaseEquipeIds.length / 4);
+
+      // Reconstruire les poules depuis les matchs du Tour 1 (même logique que POULES)
+      const tour1Champ = phase.tours[0];
+      const champAssignments: import('../../engine/strategies/interfaces.js').DrawAssignment[] = [];
+      if (tour1Champ) {
+        const matchsPerPoule = 2;
+        let pouleIdx = 0;
+        let posInPoule = 0;
+        for (const match of tour1Champ.matchs) {
+          champAssignments.push({ equipeId: match.equipeAId, position: posInPoule * 2, pouleIndex: pouleIdx });
+          if (match.equipeBId) {
+            champAssignments.push({ equipeId: match.equipeBId, position: posInPoule * 2 + 1, pouleIndex: pouleIdx });
+          }
+          posInPoule++;
+          if (posInPoule >= matchsPerPoule) {
+            posInPoule = 0;
+            pouleIdx++;
+          }
+        }
+      }
+
+      const champStrategy = new RoundRobinPoolStrategy(champAssignments.length > 0 ? champAssignments : undefined);
+      const champContext = {
+        phaseId: phase.id,
+        equipeIds: phaseEquipeIds,
+        matchResults: phaseResults,
+        config: { nbPoules },
+      };
+
+      if (!champStrategy.isPhaseComplete(champContext)) {
+        throw ApiError.badRequest('Tous les matchs de la phase de poules doivent être terminés');
+      }
+
+      const qualifies = champStrategy.getQualifies(champContext);
+
+      // Terminer la phase de poules CHAMPIONNAT
+      phase.terminer();
+
+      // Créer 3 phases ELIMINATION_SIMPLE : Championnat A (1ers), B (2es), C (3es)
+      const labels = ['A', 'B', 'C'];
+      const createdPhases: Array<{ phaseId: string; label: string; matchups: ReturnType<typeof buildSymmetricKoMatchups> }> = [];
+
+      for (let rangIdx = 0; rangIdx < 3; rangIdx++) {
+        const rang = rangIdx + 1;
+        const label = labels[rangIdx];
+        const nom = `Championnat ${label}`;
+
+        const matchups = buildSymmetricKoMatchups(qualifies, rang);
+        if (matchups.length === 0) continue;
+
+        const newPhaseId = `phase-${concours.phases.length + 1}`;
+        const phaseDef = new PhaseDefinition(
+          TypePhase.ELIMINATION_SIMPLE,
+          'integral',
+          [CritereClassement.POINTS],
+          [],
+          null,
+        );
+        const newPhase = new Phase(newPhaseId, concours.id, TypePhase.ELIMINATION_SIMPLE, concours.phases.length + 1, phaseDef, nom);
+        concours.ajouterPhase(newPhase);
+        newPhase.demarrer();
+
+        const roundName = matchups.length === 1 ? 'Finale' :
+          matchups.length === 2 ? 'Demi-finales' :
+          matchups.length === 4 ? 'Quarts de finale' : `Tour 1`;
+
+        const tourId = `${newPhaseId}-tour-1`;
+        const tour = new Tour(tourId, newPhaseId, 1, undefined, [], roundName);
+        for (let i = 0; i < matchups.length; i++) {
+          const mu = matchups[i];
+          const matchId = `${tourId}-match-${i + 1}`;
+          const match = new Match(matchId, tourId, mu.equipeAId, mu.equipeBId);
+          tour.ajouterMatch(match);
+        }
+        newPhase.ajouterTour(tour);
+        assignerTerrainsAuTour(concours, tour);
+
+        createdPhases.push({ phaseId: newPhaseId, label, matchups });
+      }
+
+      await ctx.concoursRepository.save(concours);
+      res.status(201).json({
+        message: 'Phases de Championnat A, B, C créées',
+        qualifies: qualifies.map((q) => ({ equipeId: q.equipeId, poule: q.pouleIndex, rang: q.rang })),
+        phases: createdPhases.map((p) => ({
+          phaseId: p.phaseId,
+          nom: `Championnat ${p.label}`,
+          matchups: p.matchups.map((m) => ({ equipeA: m.equipeAId, equipeB: m.equipeBId })),
+        })),
+      });
+      return;
     } else {
       throw ApiError.badRequest(`Type de phase non supporté pour la progression : ${phaseType}`);
     }

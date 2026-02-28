@@ -9,10 +9,16 @@ import type { MatchDto } from '@/types/concours';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
-const TOUR_LABELS: Record<number, string> = {
+const TOUR_LABELS_GSL: Record<number, string> = {
   1: 'Tour 1',
   2: 'Tour 2 — Gagnants / Perdants',
   3: 'Tour 3 — Barrage',
+};
+
+const TOUR_LABELS_RR: Record<number, string> = {
+  1: 'Tour 1 — A-B / C-D',
+  2: 'Tour 2 — A-C / B-D',
+  3: 'Tour 3 — A-D / B-C',
 };
 
 interface PoolGroupCardProps {
@@ -21,6 +27,7 @@ interface PoolGroupCardProps {
   matchs: MatchDto[];
   equipeLookup: Map<string, string>;
   concoursId: string;
+  mode?: 'gsl' | 'roundrobin';
 }
 
 interface TeamStats {
@@ -38,6 +45,7 @@ function computeClassement(
   equipeIds: string[],
   matchs: MatchDto[],
   equipeLookup: Map<string, string>,
+  mode: 'gsl' | 'roundrobin',
 ): TeamStats[] {
   const statsMap = new Map<string, TeamStats>();
 
@@ -81,7 +89,21 @@ function computeClassement(
     }
   }
 
-  return Array.from(statsMap.values()).sort((a, b) => {
+  const teams = Array.from(statsMap.values());
+
+  if (mode === 'roundrobin') {
+    // Tri round-robin : points → diff score → score marqué
+    return teams.sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      const diffA = a.pointsMarques - a.pointsEncaisses;
+      const diffB = b.pointsMarques - b.pointsEncaisses;
+      if (diffB !== diffA) return diffB - diffA;
+      return b.pointsMarques - a.pointsMarques;
+    });
+  }
+
+  // Tri GSL : points → victoires → diff score
+  return teams.sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points;
     if (b.victoires !== a.victoires) return b.victoires - a.victoires;
     return (b.pointsMarques - b.pointsEncaisses) - (a.pointsMarques - a.pointsEncaisses);
@@ -133,18 +155,28 @@ function PoolMatchActions({
   return null;
 }
 
+// Couleurs de qualification pour le round-robin (3 qualifiés)
+const RR_QUAL_STYLES = [
+  { row: 'bg-green-50 border-b', label: '→ Champ. A', labelClass: 'text-green-700' },
+  { row: 'bg-blue-50 border-b', label: '→ Champ. B', labelClass: 'text-blue-700' },
+  { row: 'bg-orange-50 border-b', label: '→ Champ. C', labelClass: 'text-orange-700' },
+];
+
 export function PoolGroupCard({
   pouleIndex,
   equipeIds,
   matchs,
   equipeLookup,
   concoursId,
+  mode = 'gsl',
 }: PoolGroupCardProps) {
   const pouleName = `POULE ${LETTERS[pouleIndex] ?? pouleIndex + 1}`;
+  const tourLabels = mode === 'roundrobin' ? TOUR_LABELS_RR : TOUR_LABELS_GSL;
+  const nbQualifies = mode === 'roundrobin' ? 3 : 2;
 
   const classement = useMemo(
-    () => computeClassement(equipeIds, matchs, equipeLookup),
-    [equipeIds, matchs, equipeLookup],
+    () => computeClassement(equipeIds, matchs, equipeLookup, mode),
+    [equipeIds, matchs, equipeLookup, mode],
   );
 
   const matchsByTour = useMemo(() => {
@@ -178,30 +210,43 @@ export function PoolGroupCard({
               <th className="px-3 py-2">Équipe</th>
               <th className="w-10 px-3 py-2 text-center">V</th>
               <th className="w-10 px-3 py-2 text-center">D</th>
+              <th className="w-14 px-3 py-2 text-center">Diff</th>
               <th className="w-12 px-3 py-2 text-center">Pts</th>
+              {mode === 'roundrobin' && <th className="px-3 py-2" />}
             </tr>
           </thead>
           <tbody>
-            {classement.map((team, idx) => (
-              <tr
-                key={team.equipeId}
-                className={
-                  idx < 2
-                    ? 'bg-green-50 border-b'
-                    : 'border-b'
-                }
-              >
-                <td className="px-3 py-2 text-center">
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-muted text-xs font-semibold">
-                    {team.letter}
-                  </span>
-                </td>
-                <td className="px-3 py-2 font-medium">{team.nom}</td>
-                <td className="px-3 py-2 text-center">{team.victoires}</td>
-                <td className="px-3 py-2 text-center">{team.defaites}</td>
-                <td className="px-3 py-2 text-center font-semibold">{team.points}</td>
-              </tr>
-            ))}
+            {classement.map((team, idx) => {
+              const isQualified = idx < nbQualifies;
+              const rrStyle = mode === 'roundrobin' && isQualified ? RR_QUAL_STYLES[idx] : null;
+              const rowClass = rrStyle
+                ? rrStyle.row
+                : idx < 2
+                  ? 'bg-green-50 border-b'
+                  : 'border-b';
+
+              return (
+                <tr key={team.equipeId} className={rowClass}>
+                  <td className="px-3 py-2 text-center">
+                    <span className="inline-flex h-6 w-6 items-center justify-center rounded bg-muted text-xs font-semibold">
+                      {team.letter}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 font-medium">{team.nom}</td>
+                  <td className="px-3 py-2 text-center">{team.victoires}</td>
+                  <td className="px-3 py-2 text-center">{team.defaites}</td>
+                  <td className="px-3 py-2 text-center text-xs text-muted-foreground">
+                    {(() => { const d = team.pointsMarques - team.pointsEncaisses; return d > 0 ? `+${d}` : `${d}`; })()}
+                  </td>
+                  <td className="px-3 py-2 text-center font-semibold">{team.points}</td>
+                  {mode === 'roundrobin' && (
+                    <td className={`px-3 py-2 text-xs font-medium ${rrStyle?.labelClass ?? 'text-muted-foreground'}`}>
+                      {rrStyle ? rrStyle.label : 'Éliminé'}
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 
@@ -210,7 +255,7 @@ export function PoolGroupCard({
           {matchsByTour.map(([tourNum, tourMatchs]) => (
             <div key={tourNum}>
               <h4 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-                {TOUR_LABELS[tourNum] ?? `Tour ${tourNum}`}
+                {tourLabels[tourNum] ?? `Tour ${tourNum}`}
               </h4>
               <div className="space-y-1.5">
                 {tourMatchs.map((m) => {

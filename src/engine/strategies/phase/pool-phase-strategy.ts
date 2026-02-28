@@ -267,7 +267,7 @@ export class PoolPhaseStrategy implements PhaseStrategy {
 /**
  * Convertit les DrawAssignment (avec pouleIndex) en tableau de poules.
  */
-function assignmentsToPoules(assignments: DrawAssignment[]): EntityId[][] {
+export function assignmentsToPoules(assignments: DrawAssignment[]): EntityId[][] {
   const poulesMap = new Map<number, EntityId[]>();
 
   for (const a of assignments) {

@@ -15,9 +15,10 @@ import { TypeEquipe, TypePhase, CritereClassement, TypeQualification } from '../
 import { IntegralDrawStrategy } from '../../engine/strategies/draw/integral-draw-strategy.js';
 import { assignerTerrainsAuTour } from '../helpers/terrain-assignment.js';
 import { PoolPhaseStrategy } from '../../engine/strategies/phase/pool-phase-strategy.js';
+import { RoundRobinPoolStrategy } from '../../engine/strategies/phase/round-robin-pool-strategy.js';
 import { SingleEliminationStrategy } from '../../engine/strategies/phase/single-elimination-strategy.js';
 import { SwissSystemStrategy } from '../../engine/strategies/phase/swiss-system-strategy.js';
-import { TourGeneration, Matchup } from '../../engine/strategies/interfaces.js';
+
 
 // ─── Schemas Zod ────────────────────────────────────────────────────────────
 
@@ -119,6 +120,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
       })),
       phases: concours.phases.map((p) => ({
         id: p.id, type: p.type, ordre: p.ordre, statut: p.statut,
+        nom: p.nom,
         nbTours: p.tours.length,
         classement: p.classement ? p.classement.lignes : null,
       })),
@@ -225,7 +227,11 @@ export function createConcoursRouter(ctx: AppContext): Router {
     // Récupérer les équipes inscrites (avant lancerTirage pour validation)
     const equipeIds = concours.inscriptionsActives.map((i) => i.equipeId);
     const phaseType = concours.formule.phases[0].type;
-    const nbPoules = req.body.nbPoules ?? (phaseType === TypePhase.POULES ? Math.floor(equipeIds.length / 4) : undefined);
+    const nbPoules = req.body.nbPoules ?? (
+      (phaseType === TypePhase.POULES || phaseType === TypePhase.CHAMPIONNAT)
+        ? Math.floor(equipeIds.length / 4)
+        : undefined
+    );
 
     // Validation poules : chaque poule doit contenir exactement 4 équipes
     if (phaseType === TypePhase.POULES) {
@@ -241,6 +247,15 @@ export function createConcoursRouter(ctx: AppContext): Router {
       }
     }
 
+    // Validation CHAMPIONNAT : 8, 16, 32 ou 64 équipes
+    if (phaseType === TypePhase.CHAMPIONNAT) {
+      if (![8, 16, 32, 64].includes(equipeIds.length)) {
+        throw ApiError.badRequest(
+          `Le Championnat nécessite 8, 16, 32 ou 64 équipes (trouvé : ${equipeIds.length})`
+        );
+      }
+    }
+
     // Lancer le tirage (vérifie les invariants de statut)
     concours.lancerTirage();
 
@@ -248,10 +263,15 @@ export function createConcoursRouter(ctx: AppContext): Router {
       .filter((i) => i.teteDeSerie)
       .map((i) => i.equipeId);
 
+    const useProtectionClub = phaseType === TypePhase.CHAMPIONNAT;
+    const clubsByEquipe = useProtectionClub
+      ? buildClubMap(concours.inscriptionsActives)
+      : new Map<string, string>();
+
     const drawStrategy = new IntegralDrawStrategy(nbPoules);
     const drawResult = drawStrategy.execute({
       equipeIds,
-      constraints: { protectionClub: false, clubsByEquipe: new Map() },
+      constraints: { protectionClub: useProtectionClub, clubsByEquipe },
       tetesDeSerieIds: tetesDeSerieIds.length > 0 ? tetesDeSerieIds : undefined,
     });
 
@@ -291,8 +311,11 @@ export function createConcoursRouter(ctx: AppContext): Router {
       const strategy = new SingleEliminationStrategy();
       tours = strategy.generateTours(phaseContext);
     } else if (phaseType === TypePhase.CHAMPIONNAT) {
-      // CHAMPIONNAT : round-robin complet (tous les tours générés)
-      tours = generateRoundRobinTours(assignedEquipeIds);
+      // CHAMPIONNAT : poules de 4 + round-robin (3 tours fixes générés d'un coup)
+      const nbPoulesChamp = equipeIds.length / 4;
+      phaseContext.config = { ...phaseContext.config, nbPoules: nbPoulesChamp };
+      const strategy = new RoundRobinPoolStrategy(drawResult.assignments);
+      tours = strategy.generateTours(phaseContext);
     } else if (phaseType === TypePhase.SYSTEME_SUISSE) {
       // SUISSE : seulement tour 1 (aléatoire)
       const strategy = new SwissSystemStrategy();
@@ -365,34 +388,15 @@ export function createConcoursRouter(ctx: AppContext): Router {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * Génère un round-robin complet pour le championnat (tous les tours).
+ * Construit la map equipeId → clubId depuis les inscriptions actives.
+ * Utilisé pour la protection club dans le tirage CHAMPIONNAT.
  */
-function generateRoundRobinTours(equipeIds: string[]): TourGeneration[] {
-  const equipes = [...equipeIds];
-  const hasGhost = equipes.length % 2 !== 0;
-  if (hasGhost) equipes.push('__BYE__');
-
-  const n = equipes.length;
-  const tours: TourGeneration[] = [];
-
-  for (let round = 0; round < n - 1; round++) {
-    const matchups: Matchup[] = [];
-
-    for (let i = 0; i < n / 2; i++) {
-      const home = i === 0 ? equipes[0] : equipes[((round + i - 1) % (n - 1)) + 1];
-      const away = equipes[((round + (n / 2) - 1 + (n / 2 - i) - 1) % (n - 1)) + 1];
-
-      if (home === '__BYE__') {
-        matchups.push({ equipeAId: away, equipeBId: null });
-      } else if (away === '__BYE__') {
-        matchups.push({ equipeAId: home, equipeBId: null });
-      } else {
-        matchups.push({ equipeAId: home, equipeBId: away });
-      }
+function buildClubMap(inscriptions: Inscription[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const i of inscriptions) {
+    if (i.equipe.clubId) {
+      map.set(i.equipeId, i.equipe.clubId);
     }
-
-    tours.push({ numero: round + 1, matchups, nom: `Journée ${round + 1}` });
   }
-
-  return tours;
+  return map;
 }

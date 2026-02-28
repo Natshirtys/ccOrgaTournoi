@@ -50,8 +50,9 @@ export interface InscriptionDto {
 export interface PhaseDto {
   id: string;
   type: TypePhase;
-  numero: number;
+  ordre: number;
   statut: string;
+  nom?: string; // "Championnat A", "Championnat B", "Championnat C"
 }
 
 export interface ConcoursDetail extends ConcoursSummary {
@@ -66,6 +67,7 @@ export interface MatchDto {
   tourNom?: string;
   phaseId?: string;
   phaseType?: string;
+  phaseNom?: string;
   terrainId?: string;
   terrainNumero?: number | null;
   terrainNom?: string | null;

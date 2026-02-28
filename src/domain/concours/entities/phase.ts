@@ -8,6 +8,7 @@ export class Phase extends Entity {
   private _statut: StatutPhase;
   private _tours: Tour[];
   private _classement: Classement | null;
+  private _nom?: string;
 
   constructor(
     id: EntityId,
@@ -15,14 +16,20 @@ export class Phase extends Entity {
     public readonly type: TypePhase,
     public readonly ordre: number,
     public readonly config: PhaseDefinition,
+    nom?: string,
     statut: StatutPhase = StatutPhase.EN_ATTENTE,
     tours: Tour[] = [],
     classement: Classement | null = null,
   ) {
     super(id);
+    this._nom = nom;
     this._statut = statut;
     this._tours = tours;
     this._classement = classement;
+  }
+
+  get nom(): string | undefined {
+    return this._nom;
   }
 
   get statut(): StatutPhase {
