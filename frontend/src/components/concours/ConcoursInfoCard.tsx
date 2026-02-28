@@ -23,6 +23,10 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('fr-FR');
 }
 
+function formatDates(debut: string, fin: string) {
+  return debut === fin ? formatDate(debut) : `${formatDate(debut)} — ${formatDate(fin)}`;
+}
+
 // ─── Règles par format ────────────────────────────────────────────────────────
 
 function FormatRulesContent({ typePhase }: { typePhase?: TypePhase }) {
@@ -156,16 +160,18 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <CardTitle className="text-xl">{concours.nom}</CardTitle>
             <Dialog>
               <DialogTrigger asChild>
-                <button
-                  className="text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label="Règles du format"
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1.5 rounded-full border-primary/30 px-3 text-xs text-primary hover:border-primary hover:bg-primary/10"
                 >
-                  <Info className="h-4 w-4" />
-                </button>
+                  <Info className="h-3.5 w-3.5" />
+                  Règles
+                </Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
@@ -182,15 +188,15 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+          {concours.lieu && (
+            <div>
+              <p className="text-muted-foreground">Lieu</p>
+              <p className="font-medium">{concours.lieu}</p>
+            </div>
+          )}
           <div>
-            <p className="text-muted-foreground">Lieu</p>
-            <p className="font-medium">{concours.lieu}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Dates</p>
-            <p className="font-medium">
-              {formatDate(concours.dates.debut)} — {formatDate(concours.dates.fin)}
-            </p>
+            <p className="text-muted-foreground">Date</p>
+            <p className="font-medium">{formatDates(concours.dates.debut, concours.dates.fin)}</p>
           </div>
           <div>
             <p className="text-muted-foreground">Type</p>

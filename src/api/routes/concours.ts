@@ -25,8 +25,8 @@ import { SwissSystemStrategy } from '../../engine/strategies/phase/swiss-system-
 const creerConcoursSchema = z.object({
   nom: z.string().min(1, 'Le nom est requis'),
   dateDebut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format YYYY-MM-DD'),
-  dateFin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format YYYY-MM-DD'),
-  lieu: z.string().min(1, 'Le lieu est requis'),
+  dateFin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format YYYY-MM-DD').optional(),
+  lieu: z.string().default(''),
   organisateurId: z.string().min(1),
   typeEquipe: z.nativeEnum(TypeEquipe),
   nbEquipesMin: z.number().int().min(2).default(4),
@@ -133,7 +133,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
     const data = req.body;
     const id = ctx.concoursRepository.nextId();
 
-    const dates = new DateRange(new Date(data.dateDebut), new Date(data.dateFin));
+    const dates = new DateRange(new Date(data.dateDebut), new Date(data.dateFin ?? data.dateDebut));
     const phaseDefinition = new PhaseDefinition(
       data.typePhase,
       'integral',

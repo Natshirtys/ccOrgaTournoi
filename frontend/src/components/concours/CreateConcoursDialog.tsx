@@ -30,7 +30,6 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
   const [nom, setNom] = useState('');
   const [lieu, setLieu] = useState('');
   const [dateDebut, setDateDebut] = useState('');
-  const [dateFin, setDateFin] = useState('');
   const [typeEquipe, setTypeEquipe] = useState<TypeEquipe>('DOUBLETTE');
   const [typePhase, setTypePhase] = useState<TypePhase>('POULES');
   const [nbTerrains, setNbTerrains] = useState(8);
@@ -40,8 +39,7 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
     onSubmit({
       nom,
       dateDebut,
-      dateFin,
-      lieu,
+      lieu: lieu || undefined,
       organisateurId: 'org-1',
       typeEquipe,
       typePhase,
@@ -51,7 +49,6 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
     setNom('');
     setLieu('');
     setDateDebut('');
-    setDateFin('');
     setTypeEquipe('DOUBLETTE');
     setTypePhase('POULES');
     setNbTerrains(8);
@@ -73,30 +70,20 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
             <Input id="nom" value={nom} onChange={(e) => setNom(e.target.value)} required />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="lieu">Lieu</Label>
-            <Input id="lieu" value={lieu} onChange={(e) => setLieu(e.target.value)} required />
+            <Label htmlFor="lieu">
+              Lieu <span className="text-xs text-muted-foreground">(optionnel)</span>
+            </Label>
+            <Input id="lieu" value={lieu} onChange={(e) => setLieu(e.target.value)} placeholder="Boulodrome municipal…" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="dateDebut">Date début</Label>
-              <Input
-                id="dateDebut"
-                type="date"
-                value={dateDebut}
-                onChange={(e) => setDateDebut(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="dateFin">Date fin</Label>
-              <Input
-                id="dateFin"
-                type="date"
-                value={dateFin}
-                onChange={(e) => setDateFin(e.target.value)}
-                required
-              />
-            </div>
+          <div className="grid gap-2">
+            <Label htmlFor="dateDebut">Date</Label>
+            <Input
+              id="dateDebut"
+              type="date"
+              value={dateDebut}
+              onChange={(e) => setDateDebut(e.target.value)}
+              required
+            />
           </div>
           <div className="grid gap-2">
             <Label>Type d'équipe</Label>

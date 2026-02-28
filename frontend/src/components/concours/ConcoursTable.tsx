@@ -21,6 +21,10 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('fr-FR');
 }
 
+function formatDates(debut: string, fin: string) {
+  return debut === fin ? formatDate(debut) : `${formatDate(debut)} — ${formatDate(fin)}`;
+}
+
 interface ConcoursTableProps {
   concours: ConcoursSummary[];
   onOuvrirInscriptions: (id: string) => void;
@@ -53,10 +57,8 @@ export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours
         {concours.map((c) => (
           <TableRow key={c.id} className="cursor-pointer hover:bg-muted" onClick={() => onSelectConcours(c.id)}>
             <TableCell className="font-medium">{c.nom}</TableCell>
-            <TableCell>{c.lieu}</TableCell>
-            <TableCell>
-              {formatDate(c.dates.debut)} — {formatDate(c.dates.fin)}
-            </TableCell>
+            <TableCell>{c.lieu || <span className="text-muted-foreground">—</span>}</TableCell>
+            <TableCell>{formatDates(c.dates.debut, c.dates.fin)}</TableCell>
             <TableCell>{TYPE_LABELS[c.formule.typeEquipe] ?? c.formule.typeEquipe}</TableCell>
             <TableCell>
               <ConcoursStatusBadge statut={c.statut} />

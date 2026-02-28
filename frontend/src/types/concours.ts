@@ -94,8 +94,8 @@ export interface LigneClassementDto {
 export interface CreateConcoursPayload {
   nom: string;
   dateDebut: string;
-  dateFin: string;
-  lieu: string;
+  dateFin?: string;
+  lieu?: string;
   organisateurId: string;
   typeEquipe: TypeEquipe;
   typePhase?: TypePhase;
