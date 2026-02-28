@@ -67,6 +67,8 @@ export interface MatchDto {
   phaseId?: string;
   phaseType?: string;
   terrainId?: string;
+  terrainNumero?: number | null;
+  terrainNom?: string | null;
   equipeAId: string;
   equipeBId: string;
   statut: StatutMatch;

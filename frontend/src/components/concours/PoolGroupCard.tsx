@@ -241,6 +241,9 @@ export function PoolGroupCard({
                       <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-muted text-xs font-semibold">
                         {letterB}
                       </span>
+                      {m.terrainNumero != null && (
+                        <span className="text-xs text-muted-foreground">T{m.terrainNumero}</span>
+                      )}
                       <div className="ml-2 flex items-center gap-1">
                         {isTermine ? (
                           <Badge variant="secondary" className="text-xs">

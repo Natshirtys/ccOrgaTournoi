@@ -38,6 +38,17 @@ export function declarerForfait(
   });
 }
 
+export function assignerTerrain(
+  concoursId: string,
+  matchId: string,
+  terrainId: string,
+): Promise<void> {
+  return apiFetch(`/concours/${concoursId}/matchs/${matchId}/terrain`, {
+    method: 'POST',
+    body: JSON.stringify({ terrainId }),
+  });
+}
+
 export function fetchClassement(concoursId: string): Promise<{ data: LigneClassementDto[] }> {
   return apiFetch(`/concours/${concoursId}/classement`);
 }

@@ -13,6 +13,7 @@ import { Match } from '../../domain/concours/entities/match.js';
 import { DateRange, FormuleConcours, ReglementConcours, PhaseDefinition, QualificationRule } from '../../domain/shared/value-objects.js';
 import { TypeEquipe, TypePhase, CritereClassement, TypeQualification } from '../../domain/shared/enums.js';
 import { IntegralDrawStrategy } from '../../engine/strategies/draw/integral-draw-strategy.js';
+import { assignerTerrainsAuTour } from '../helpers/terrain-assignment.js';
 import { PoolPhaseStrategy } from '../../engine/strategies/phase/pool-phase-strategy.js';
 import { SingleEliminationStrategy } from '../../engine/strategies/phase/single-elimination-strategy.js';
 import { SwissSystemStrategy } from '../../engine/strategies/phase/swiss-system-strategy.js';
@@ -313,6 +314,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
       }
 
       phase.ajouterTour(tour);
+      assignerTerrainsAuTour(concours, tour);
     }
 
     // Valider le tirage et démarrer

@@ -15,7 +15,7 @@ import { PoolGroupCard } from './PoolGroupCard';
 import { KnockoutBracket } from './KnockoutBracket';
 import { fetchMatchs } from '@/api/matchs';
 import { exportFeuillesDeMatch } from '@/lib/pdf-export';
-import type { ConcoursDetail, MatchDto } from '@/types/concours';
+import type { ConcoursDetail, MatchDto, TerrainDto } from '@/types/concours';
 
 const PHASE_LABELS: Record<string, string> = {
   POULES: 'Phase de poules',
@@ -191,6 +191,7 @@ export function MatchsTab({ concours }: MatchsTabProps) {
                 equipeLookup={equipeLookup}
                 variant={phaseType === 'CONSOLANTE' ? 'consolante' : 'principal'}
                 phaseId={phaseId}
+                terrains={concours.terrains}
               />
             ) : (
               /* Fallback : rendu tableau classique */
@@ -198,6 +199,7 @@ export function MatchsTab({ concours }: MatchsTabProps) {
                 tours={tours}
                 equipeLookup={equipeLookup}
                 concoursId={concours.id}
+                terrains={concours.terrains}
               />
             )}
           </div>
@@ -240,10 +242,12 @@ function TablePhaseView({
   tours,
   equipeLookup,
   concoursId,
+  terrains = [],
 }: {
   tours: { tourNum: number; nom?: string; matchs: MatchDto[] }[];
   equipeLookup: Map<string, string>;
   concoursId: string;
+  terrains?: TerrainDto[];
 }) {
   return (
     <>
@@ -262,6 +266,7 @@ function TablePhaseView({
                   <TableHead className="text-center w-12" />
                   <TableHead>Équipe B</TableHead>
                   <TableHead className="text-center">Score</TableHead>
+                  <TableHead>Terrain</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -274,6 +279,7 @@ function TablePhaseView({
                     concoursId={concoursId}
                     equipeANom={equipeLookup.get(m.equipeAId) ?? m.equipeAId}
                     equipeBNom={equipeLookup.get(m.equipeBId) ?? m.equipeBId}
+                    terrains={terrains}
                   />
                 ))}
               </TableBody>

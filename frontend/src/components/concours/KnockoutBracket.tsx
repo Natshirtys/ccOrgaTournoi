@@ -4,7 +4,7 @@ import { ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BracketMatchCard } from './BracketMatchCard';
 import { genererTourSuivant } from '@/api/concours';
-import type { MatchDto } from '@/types/concours';
+import type { MatchDto, TerrainDto } from '@/types/concours';
 
 interface KnockoutBracketProps {
   matchs: MatchDto[];
@@ -12,6 +12,7 @@ interface KnockoutBracketProps {
   equipeLookup: Map<string, string>;
   variant?: 'principal' | 'consolante';
   phaseId?: string;
+  terrains?: TerrainDto[];
 }
 
 const ROUND_NAMES: Record<number, string> = {
@@ -32,6 +33,7 @@ export function KnockoutBracket({
   equipeLookup,
   variant = 'principal',
   phaseId,
+  terrains = [],
 }: KnockoutBracketProps) {
   const queryClient = useQueryClient();
 
@@ -128,6 +130,7 @@ export function KnockoutBracket({
                       concoursId={concoursId}
                       equipeLookup={equipeLookup}
                       variant={variant}
+                      terrains={terrains}
                     />
                     {/* Connector: horizontal line going right */}
                     {colIdx < totalRounds - 1 && (

@@ -1,21 +1,28 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { SaisirScoreDialog } from './SaisirScoreDialog';
-import { demarrerMatch } from '@/api/matchs';
-import type { MatchDto } from '@/types/concours';
+import { demarrerMatch, assignerTerrain } from '@/api/matchs';
+import type { MatchDto, TerrainDto } from '@/types/concours';
 
 interface BracketMatchCardProps {
   match: MatchDto;
   concoursId: string;
   equipeLookup: Map<string, string>;
   variant?: 'principal' | 'consolante';
+  terrains?: TerrainDto[];
 }
 
-export function BracketMatchCard({ match, concoursId, equipeLookup, variant = 'principal' }: BracketMatchCardProps) {
+export function BracketMatchCard({ match, concoursId, equipeLookup, variant = 'principal', terrains = [] }: BracketMatchCardProps) {
   const queryClient = useQueryClient();
 
   const demarrerMutation = useMutation({
     mutationFn: () => demarrerMatch(concoursId, match.id),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['concours', concoursId, 'matchs'] }),
+  });
+
+  const terrainMutation = useMutation({
+    mutationFn: (terrainId: string) => assignerTerrain(concoursId, match.id, terrainId),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['concours', concoursId, 'matchs'] }),
   });
@@ -34,8 +41,39 @@ export function BracketMatchCard({ match, concoursId, equipeLookup, variant = 'p
   const borderColor = isConsolante ? 'border-amber-700' : 'border-[var(--color-bracket-card)]';
   const actionBg = isConsolante ? 'bg-amber-800' : 'bg-[var(--color-bracket-card)]';
 
+  // Terrains disponibles pour le sélecteur (pas utilisés par un autre match actif)
+  const canChangeTerrain = match.statut === 'PROGRAMME' || match.statut === 'EN_COURS';
+
   return (
     <div className={`bracket-match-card w-full rounded-lg overflow-hidden shadow-sm border ${borderColor}`}>
+      {/* Terrain badge */}
+      {match.terrainNumero != null && (
+        <div className={`flex items-center justify-center ${actionBg} px-2 py-0.5 text-xs text-white/70`}>
+          {canChangeTerrain && terrains.length > 0 ? (
+            <select
+              className="bg-transparent text-white/90 text-xs text-center cursor-pointer border-none outline-none appearance-none"
+              value={match.terrainId ?? ''}
+              onChange={(e) => terrainMutation.mutate(e.target.value)}
+              disabled={terrainMutation.isPending}
+            >
+              {match.terrainId && (
+                <option value={match.terrainId}>
+                  T{match.terrainNumero}
+                </option>
+              )}
+              {terrains
+                .filter((t) => t.id !== match.terrainId)
+                .map((t) => (
+                  <option key={t.id} value={t.id}>
+                    T{t.numero}
+                  </option>
+                ))}
+            </select>
+          ) : (
+            <span>T{match.terrainNumero}</span>
+          )}
+        </div>
+      )}
       {/* Équipe A */}
       <div
         className={`flex items-center justify-between px-3 py-2 text-sm ${

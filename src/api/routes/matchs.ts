@@ -15,6 +15,7 @@ import { PoolPhaseStrategy, buildKoCrossMatchups } from '../../engine/strategies
 import { SingleEliminationStrategy } from '../../engine/strategies/phase/single-elimination-strategy.js';
 import { ComplementaireStrategy } from '../../engine/strategies/phase/complementaire-strategy.js';
 import { SwissSystemStrategy } from '../../engine/strategies/phase/swiss-system-strategy.js';
+import { assignerTerrainsAuTour } from '../helpers/terrain-assignment.js';
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
@@ -67,6 +68,12 @@ export function createMatchsRouter(ctx: AppContext): Router {
             score: match.score ? { equipeA: match.score.pointsA, equipeB: match.score.pointsB } : null,
             resultat: match.resultat ? match.resultat.type : null,
             terrainId: match.terrainId,
+            terrainNumero: match.terrainId
+              ? concours.terrains.find((t) => t.id === match.terrainId)?.numero ?? null
+              : null,
+            terrainNom: match.terrainId
+              ? concours.terrains.find((t) => t.id === match.terrainId)?.nom ?? null
+              : null,
           });
         }
       }
@@ -113,6 +120,13 @@ export function createMatchsRouter(ctx: AppContext): Router {
     }
 
     match.validerResultat(resultat);
+
+    // Libérer le terrain
+    if (match.terrainId) {
+      const terrain = concours.terrains.find((t) => t.id === match.terrainId);
+      if (terrain) terrain.liberer();
+    }
+
     await ctx.concoursRepository.save(concours);
 
     res.json({
@@ -129,6 +143,12 @@ export function createMatchsRouter(ctx: AppContext): Router {
 
     match.declarerForfait(req.body.equipeDeclarantForfaitId);
 
+    // Libérer le terrain
+    if (match.terrainId) {
+      const terrain = concours.terrains.find((t) => t.id === match.terrainId);
+      if (terrain) terrain.liberer();
+    }
+
     const vainqueurId = req.body.equipeDeclarantForfaitId === match.equipeAId ? match.equipeBId! : match.equipeAId;
     await ctx.concoursRepository.save(concours);
 
@@ -138,6 +158,45 @@ export function createMatchsRouter(ctx: AppContext): Router {
       forfaitEquipe: req.body.equipeDeclarantForfaitId,
       vainqueur: vainqueurId,
     });
+  }));
+
+  // POST /:id/matchs/:matchId/terrain — Réassigner un terrain manuellement
+  router.post('/:id/matchs/:matchId/terrain', validateBody(z.object({ terrainId: z.string().min(1) })), asyncHandler(async (req, res) => {
+    const { concours, match } = await findMatch(ctx, param(req.params.id), param(req.params.matchId));
+    const { terrainId } = req.body;
+
+    // Vérifier que le terrain existe
+    const terrain = concours.terrains.find((t) => t.id === terrainId);
+    if (!terrain) throw ApiError.notFound('Terrain non trouvé');
+
+    // Vérifier que le terrain n'est pas utilisé par un autre match en cours
+    for (const phase of concours.phases) {
+      for (const tour of phase.tours) {
+        for (const m of tour.matchs) {
+          if (m.id !== match.id && m.terrainId === terrainId && !m.isTermine && !m.isBye) {
+            throw ApiError.badRequest('Ce terrain est déjà utilisé par un autre match en cours');
+          }
+        }
+      }
+    }
+
+    // Libérer l'ancien terrain si le match en avait un
+    if (match.terrainId) {
+      const ancienTerrain = concours.terrains.find((t) => t.id === match.terrainId);
+      if (ancienTerrain) ancienTerrain.liberer();
+    }
+
+    // Assigner le nouveau terrain
+    match.assignerTerrain(terrainId);
+
+    // Si le match est en cours, marquer le terrain comme occupé
+    if (match.statut === 'EN_COURS') {
+      terrain.occuper();
+    }
+
+    await ctx.concoursRepository.save(concours);
+
+    res.json({ matchId: match.id, terrainId, terrainNumero: terrain.numero, terrainNom: terrain.nom });
   }));
 
   // POST /:id/generer-tour-suivant — Générer le tour / phase suivant(e)
@@ -259,6 +318,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
             tour.ajouterMatch(match);
           }
           newPhase.ajouterTour(tour);
+          assignerTerrainsAuTour(concours, tour);
         }
 
         await ctx.concoursRepository.save(concours);
@@ -318,6 +378,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
               tour.ajouterMatch(match);
             }
             consolPhase.ajouterTour(tour);
+            assignerTerrainsAuTour(concours, tour);
           }
         }
       }
@@ -388,6 +449,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
     }
 
     phase.ajouterTour(newTour);
+    assignerTerrainsAuTour(concours, newTour);
     await ctx.concoursRepository.save(concours);
 
     res.status(201).json({

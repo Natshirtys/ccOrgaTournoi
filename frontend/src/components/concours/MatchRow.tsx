@@ -3,8 +3,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { SaisirScoreDialog } from './SaisirScoreDialog';
-import { demarrerMatch, declarerForfait } from '@/api/matchs';
-import type { MatchDto } from '@/types/concours';
+import { demarrerMatch, declarerForfait, assignerTerrain } from '@/api/matchs';
+import type { MatchDto, TerrainDto } from '@/types/concours';
 
 const STATUT_MATCH_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   PROGRAMME: { label: 'Programmé', variant: 'outline' },
@@ -18,9 +18,10 @@ interface MatchRowProps {
   concoursId: string;
   equipeANom: string;
   equipeBNom: string;
+  terrains?: TerrainDto[];
 }
 
-export function MatchRow({ match, concoursId, equipeANom, equipeBNom }: MatchRowProps) {
+export function MatchRow({ match, concoursId, equipeANom, equipeBNom, terrains = [] }: MatchRowProps) {
   const queryClient = useQueryClient();
 
   const demarrerMutation = useMutation({
@@ -38,8 +39,15 @@ export function MatchRow({ match, concoursId, equipeANom, equipeBNom }: MatchRow
     },
   });
 
+  const terrainMutation = useMutation({
+    mutationFn: (terrainId: string) => assignerTerrain(concoursId, match.id, terrainId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['concours', concoursId, 'matchs'] }),
+  });
+
   const statutConfig = STATUT_MATCH_LABELS[match.statut] ?? { label: match.statut, variant: 'outline' as const };
   const score = match.score;
+  const canChangeTerrain = match.statut === 'PROGRAMME' || match.statut === 'EN_COURS';
 
   return (
     <TableRow>
@@ -48,6 +56,30 @@ export function MatchRow({ match, concoursId, equipeANom, equipeBNom }: MatchRow
       <TableCell className="font-medium">{equipeBNom}</TableCell>
       <TableCell className="text-center">
         {score ? `${score.equipeA} - ${score.equipeB}` : '—'}
+      </TableCell>
+      <TableCell>
+        {canChangeTerrain && terrains.length > 0 ? (
+          <select
+            className="rounded border bg-background px-1.5 py-0.5 text-sm"
+            value={match.terrainId ?? ''}
+            onChange={(e) => terrainMutation.mutate(e.target.value)}
+            disabled={terrainMutation.isPending}
+          >
+            <option value="" disabled>—</option>
+            {match.terrainId && !terrains.some((t) => t.id === match.terrainId) && (
+              <option value={match.terrainId}>T{match.terrainNumero}</option>
+            )}
+            {terrains.map((t) => (
+              <option key={t.id} value={t.id}>
+                T{t.numero}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="text-sm text-muted-foreground">
+            {match.terrainNumero != null ? `T${match.terrainNumero}` : '—'}
+          </span>
+        )}
       </TableCell>
       <TableCell>
         <Badge variant={statutConfig.variant}>{statutConfig.label}</Badge>
