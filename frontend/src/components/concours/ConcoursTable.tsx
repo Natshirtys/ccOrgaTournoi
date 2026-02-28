@@ -24,11 +24,10 @@ function formatDate(iso: string) {
 interface ConcoursTableProps {
   concours: ConcoursSummary[];
   onOuvrirInscriptions: (id: string) => void;
-  onAnnuler: (id: string) => void;
   onSelectConcours: (id: string) => void;
 }
 
-export function ConcoursTable({ concours, onOuvrirInscriptions, onAnnuler, onSelectConcours }: ConcoursTableProps) {
+export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours }: ConcoursTableProps) {
   if (concours.length === 0) {
     return (
       <p className="py-8 text-center text-muted-foreground">
@@ -68,11 +67,6 @@ export function ConcoursTable({ concours, onOuvrirInscriptions, onAnnuler, onSel
                 {c.statut === 'BROUILLON' && (
                   <Button size="sm" variant="outline" onClick={() => onOuvrirInscriptions(c.id)}>
                     Ouvrir inscriptions
-                  </Button>
-                )}
-                {c.statut !== 'ANNULE' && c.statut !== 'TERMINE' && c.statut !== 'ARCHIVE' && (
-                  <Button size="sm" variant="destructive" onClick={() => onAnnuler(c.id)}>
-                    Annuler
                   </Button>
                 )}
               </div>

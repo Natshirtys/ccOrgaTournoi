@@ -131,29 +131,6 @@ describe('Machine à états Concours', () => {
     expect(c.statut).toBe(StatutConcours.ARCHIVE);
   });
 
-  it('ARCHIVE est immuable — ne peut pas être annulé', () => {
-    const c = creerConcoursTest();
-    c.ouvrirInscriptions();
-    for (let i = 0; i < 4; i++) {
-      c.inscrireEquipe(creerInscription(
-        `insc${i}`, 'c1',
-        creerEquipeTest(`eq${i}`, [`j${i}a`, `j${i}b`, `j${i}c`], `club${i}`),
-      ));
-    }
-    c.cloturerInscriptions();
-    c.lancerTirage();
-    c.validerTirage();
-    c.terminer();
-    c.archiver();
-    expect(() => c.annuler()).toThrow(InvalidStateTransitionError);
-  });
-
-  it('annulation possible à tout moment sauf ARCHIVE', () => {
-    const c = creerConcoursTest();
-    c.annuler();
-    expect(c.statut).toBe(StatutConcours.ANNULE);
-  });
-
   it('refuse une transition invalide (BROUILLON → EN_COURS)', () => {
     const c = creerConcoursTest();
     expect(() => c.validerTirage()).toThrow(InvalidStateTransitionError);

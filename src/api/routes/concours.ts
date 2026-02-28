@@ -85,6 +85,7 @@ function concoursToJson(c: Concours) {
     nbPhases: c.phases.length,
     formule: {
       typeEquipe: c.formule.typeEquipe,
+      typePhase: c.formule.phases[0]?.type,
       nbEquipesMin: c.formule.nbEquipesMin,
       nbEquipesMax: c.formule.nbEquipesMax,
     },
@@ -369,17 +370,6 @@ export function createConcoursRouter(ctx: AppContext): Router {
         })),
       },
     });
-  }));
-
-  // POST /:id/annuler — Annuler un concours
-  router.post('/:id/annuler', asyncHandler(async (req, res) => {
-    const concours = await ctx.concoursRepository.findById(param(req.params.id));
-    if (!concours) throw ApiError.notFound('Concours non trouvé');
-
-    concours.annuler();
-    await ctx.concoursRepository.save(concours);
-
-    res.json({ statut: concours.statut });
   }));
 
   return router;

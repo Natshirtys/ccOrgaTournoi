@@ -7,14 +7,13 @@ import { Inscription } from './inscription.js';
 import { Equipe } from './equipe.js';
 
 const TRANSITIONS_CONCOURS: Record<StatutConcours, StatutConcours[]> = {
-  [StatutConcours.BROUILLON]: [StatutConcours.INSCRIPTIONS_OUVERTES, StatutConcours.ANNULE],
-  [StatutConcours.INSCRIPTIONS_OUVERTES]: [StatutConcours.INSCRIPTIONS_CLOSES, StatutConcours.ANNULE],
-  [StatutConcours.INSCRIPTIONS_CLOSES]: [StatutConcours.TIRAGE_EN_COURS, StatutConcours.INSCRIPTIONS_OUVERTES, StatutConcours.ANNULE],
-  [StatutConcours.TIRAGE_EN_COURS]: [StatutConcours.EN_COURS, StatutConcours.INSCRIPTIONS_CLOSES, StatutConcours.ANNULE],
-  [StatutConcours.EN_COURS]: [StatutConcours.TERMINE, StatutConcours.ANNULE],
-  [StatutConcours.TERMINE]: [StatutConcours.ARCHIVE, StatutConcours.ANNULE],
+  [StatutConcours.BROUILLON]: [StatutConcours.INSCRIPTIONS_OUVERTES],
+  [StatutConcours.INSCRIPTIONS_OUVERTES]: [StatutConcours.INSCRIPTIONS_CLOSES],
+  [StatutConcours.INSCRIPTIONS_CLOSES]: [StatutConcours.TIRAGE_EN_COURS, StatutConcours.INSCRIPTIONS_OUVERTES],
+  [StatutConcours.TIRAGE_EN_COURS]: [StatutConcours.EN_COURS, StatutConcours.INSCRIPTIONS_CLOSES],
+  [StatutConcours.EN_COURS]: [StatutConcours.TERMINE],
+  [StatutConcours.TERMINE]: [StatutConcours.ARCHIVE],
   [StatutConcours.ARCHIVE]: [],
-  [StatutConcours.ANNULE]: [],
 };
 
 export class Concours extends AggregateRoot {
@@ -124,13 +123,6 @@ export class Concours extends AggregateRoot {
 
   archiver(): void {
     this.transitionVers(StatutConcours.ARCHIVE);
-  }
-
-  annuler(): void {
-    if (this._statut === StatutConcours.ARCHIVE) {
-      throw new InvalidStateTransitionError(this._statut, StatutConcours.ANNULE, 'Concours');
-    }
-    this._statut = StatutConcours.ANNULE;
   }
 
   // --- Inscriptions ---

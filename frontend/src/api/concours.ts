@@ -44,10 +44,6 @@ export function lancerTirage(id: string, payload: LancerTiragePayload): Promise<
   });
 }
 
-export function annulerConcours(id: string): Promise<{ statut: string }> {
-  return apiFetch(`/concours/${id}/annuler`, { method: 'POST' });
-}
-
 export function genererTourSuivant(id: string, phaseId?: string): Promise<void> {
   return apiFetch(`/concours/${id}/generer-tour-suivant`, {
     method: 'POST',

@@ -31,7 +31,6 @@ export enum StatutConcours {
   EN_COURS = 'EN_COURS',
   TERMINE = 'TERMINE',
   ARCHIVE = 'ARCHIVE',
-  ANNULE = 'ANNULE',
 }
 
 export enum StatutMatch {

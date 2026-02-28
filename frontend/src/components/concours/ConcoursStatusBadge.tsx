@@ -9,7 +9,6 @@ const statutConfig: Record<StatutConcours, { label: string; variant: 'default' |
   EN_COURS:             { label: 'En cours',              variant: 'default' },
   TERMINE:              { label: 'Terminé',               variant: 'secondary' },
   ARCHIVE:              { label: 'Archivé',               variant: 'outline' },
-  ANNULE:               { label: 'Annulé',                variant: 'destructive' },
 };
 
 export function ConcoursStatusBadge({ statut }: { statut: StatutConcours }) {

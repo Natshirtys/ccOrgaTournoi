@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /e/Dev/ccOrgaTournoi && npm install 2>&1)",
+      "Bash(cd /e/Dev/ccOrgaTournoi/frontend && npm install -D @types/node 2>&1)",
+      "Bash(cd /e/Dev/ccOrgaTournoi/frontend && npm install clsx tailwind-merge class-variance-authority 2>&1)",
+      "Bash(cd /e/Dev/ccOrgaTournoi/frontend && npx shadcn@latest add button table badge dialog input label select -y 2>&1)",
+      "Bash(cd /e/Dev/ccOrgaTournoi/frontend && npx vite build 2>&1)",
+      "Bash(cd /e/Dev/ccOrgaTournoi/frontend && npx tsc --noEmit 2>&1)",
+      "Bash(cd /e/Dev/ccOrgaTournoi && npm test 2>&1)",
+      "Skill(ibmagnet-design)",
+      "Bash(cd /e/Dev/ccOrgaTournoi/frontend && npx shadcn@latest add tabs card checkbox -y 2>&1)",
+      "WebFetch(domain:www.ffsb.fr)",
+      "WebFetch(domain:fr.wikipedia.org)",
+      "Bash(cd /e/Dev/ccOrgaTournoi && npx vitest run src/__tests__/api/concours-api.test.ts 2>&1)",
+      "Bash(cd /e/Dev/ccOrgaTournoi && npx vitest run 2>&1)"
+    ]
+  }
+}

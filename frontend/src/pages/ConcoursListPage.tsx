@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchConcours, createConcours, ouvrirInscriptions, annulerConcours } from '@/api/concours';
+import { fetchConcours, createConcours, ouvrirInscriptions } from '@/api/concours';
 import { ConcoursTable } from '@/components/concours/ConcoursTable';
 import { CreateConcoursDialog } from '@/components/concours/CreateConcoursDialog';
 import type { CreateConcoursPayload } from '@/types/concours';
@@ -23,11 +23,6 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
 
   const ouvrirMutation = useMutation({
     mutationFn: (id: string) => ouvrirInscriptions(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['concours'] }),
-  });
-
-  const annulerMutation = useMutation({
-    mutationFn: (id: string) => annulerConcours(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['concours'] }),
   });
 
@@ -55,7 +50,6 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
       <ConcoursTable
         concours={data?.data ?? []}
         onOuvrirInscriptions={(id) => ouvrirMutation.mutate(id)}
-        onAnnuler={(id) => annulerMutation.mutate(id)}
         onSelectConcours={onSelectConcours}
       />
     </div>

@@ -5,8 +5,7 @@ export type StatutConcours =
   | 'TIRAGE_EN_COURS'
   | 'EN_COURS'
   | 'TERMINE'
-  | 'ARCHIVE'
-  | 'ANNULE';
+  | 'ARCHIVE';
 
 export type TypeEquipe = 'TETE_A_TETE' | 'DOUBLETTE' | 'TRIPLETTE' | 'QUADRETTE';
 
@@ -22,6 +21,7 @@ export interface ConcoursSummary {
   nbPhases: number;
   formule: {
     typeEquipe: TypeEquipe;
+    typePhase?: TypePhase;
     nbEquipesMin: number;
     nbEquipesMax: number;
   };
