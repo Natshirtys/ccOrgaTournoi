@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { SaisirScoreDialog } from './SaisirScoreDialog';
+import { CorrigerScoreDialog } from './CorrigerScoreDialog';
 import { demarrerMatch, declarerForfait, assignerTerrain } from '@/api/matchs';
 import type { MatchDto, TerrainDto } from '@/types/concours';
 
@@ -114,8 +115,21 @@ export function MatchRow({ match, concoursId, equipeANom, equipeBNom, terrains =
               </Button>
             </>
           )}
-          {match.statut === 'TERMINE' && match.resultat && (
-            <span className="text-sm text-muted-foreground">{match.resultat}</span>
+          {match.statut === 'TERMINE' && (
+            <>
+              {match.resultat && (
+                <span className="text-sm text-muted-foreground">{match.resultat}</span>
+              )}
+              {match.canEditScore && match.score && (
+                <CorrigerScoreDialog
+                  concoursId={concoursId}
+                  matchId={match.id}
+                  equipeANom={equipeANom}
+                  equipeBNom={equipeBNom}
+                  currentScore={match.score}
+                />
+              )}
+            </>
           )}
         </div>
       </TableCell>

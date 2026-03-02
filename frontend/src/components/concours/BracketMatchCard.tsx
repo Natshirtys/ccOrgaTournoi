@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { SaisirScoreDialog } from './SaisirScoreDialog';
+import { CorrigerScoreDialog } from './CorrigerScoreDialog';
 import { demarrerMatch, assignerTerrain } from '@/api/matchs';
 import type { MatchDto, TerrainDto } from '@/types/concours';
 
@@ -119,6 +120,15 @@ export function BracketMatchCard({ match, concoursId, equipeLookup, variant = 'p
             matchId={match.id}
             equipeANom={nomA}
             equipeBNom={nomB}
+          />
+        )}
+        {match.statut === 'TERMINE' && match.canEditScore && match.score && (
+          <CorrigerScoreDialog
+            concoursId={concoursId}
+            matchId={match.id}
+            equipeANom={nomA}
+            equipeBNom={nomB}
+            currentScore={match.score}
           />
         )}
       </div>

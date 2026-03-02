@@ -76,6 +76,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
             terrainNom: match.terrainId
               ? concours.terrains.find((t) => t.id === match.terrainId)?.nom ?? null
               : null,
+            canEditScore: match.statut === 'TERMINE' && !phase.tours.some((t) => t.numero > tour.numero),
           });
         }
       }
@@ -199,6 +200,47 @@ export function createMatchsRouter(ctx: AppContext): Router {
     await ctx.concoursRepository.save(concours);
 
     res.json({ matchId: match.id, terrainId, terrainNumero: terrain.numero, terrainNom: terrain.nom });
+  }));
+
+  // POST /:id/matchs/:matchId/corriger-score — Corriger le score d'un match terminé
+  router.post('/:id/matchs/:matchId/corriger-score', validateBody(saisirScoreSchema), asyncHandler(async (req, res) => {
+    const { concours, phase, tour, match } = await findMatchWithContext(ctx, param(req.params.id), param(req.params.matchId));
+    const { scoreEquipeA, scoreEquipeB } = req.body;
+
+    if (match.statut !== 'TERMINE') {
+      throw ApiError.badRequest('Seul un match terminé peut être corrigé');
+    }
+
+    const tourSuivantExiste = phase.tours.some((t) => t.numero > tour.numero);
+    if (tourSuivantExiste) {
+      throw ApiError.badRequest('Impossible de corriger : le tour suivant a déjà été généré');
+    }
+
+    match.demanderCorrection();
+
+    const nouveauScore = new Score(scoreEquipeA, scoreEquipeB);
+    const reglement = concours.reglement;
+    let resultat: ResultatMatch;
+
+    if (scoreEquipeA === scoreEquipeB && reglement.nulAutorise) {
+      resultat = ResultatMatch.nul(nouveauScore, reglement.pointsNul);
+    } else {
+      const vainqueurId = scoreEquipeA > scoreEquipeB ? match.equipeAId : match.equipeBId!;
+      const pointsV = reglement.pointsVictoire;
+      const pointsD = reglement.pointsDefaite;
+      resultat = new ResultatMatch(
+        vainqueurId,
+        TypeResultat.VICTOIRE,
+        nouveauScore,
+        vainqueurId === match.equipeAId ? pointsV : pointsD,
+        vainqueurId === match.equipeAId ? pointsD : pointsV,
+      );
+    }
+
+    match.corrigerScore(nouveauScore, resultat);
+    await ctx.concoursRepository.save(concours);
+
+    res.json({ matchId: match.id, statut: match.statut, score: { pointsA: scoreEquipeA, pointsB: scoreEquipeB } });
   }));
 
   // POST /:id/generer-tour-suivant — Générer le tour / phase suivant(e)
@@ -710,6 +752,20 @@ function collectPhaseEquipeIds(phase: Phase): string[] {
     }
   }
   return Array.from(equipeIds);
+}
+
+async function findMatchWithContext(ctx: AppContext, concoursId: string, matchId: string) {
+  const concours = await ctx.concoursRepository.findById(concoursId);
+  if (!concours) throw ApiError.notFound('Concours non trouvé');
+
+  for (const phase of concours.phases) {
+    for (const tour of phase.tours) {
+      const match = tour.trouverMatch(matchId) as Match | undefined;
+      if (match) return { concours, phase, tour, match };
+    }
+  }
+
+  throw ApiError.notFound('Match non trouvé');
 }
 
 async function findMatch(ctx: AppContext, concoursId: string, matchId: string) {

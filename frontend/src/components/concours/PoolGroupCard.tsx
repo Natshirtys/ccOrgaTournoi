@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SaisirScoreDialog } from './SaisirScoreDialog';
+import { CorrigerScoreDialog } from './CorrigerScoreDialog';
 import { demarrerMatch } from '@/api/matchs';
 import type { MatchDto } from '@/types/concours';
 
@@ -152,6 +153,17 @@ function PoolMatchActions({
       />
     );
   }
+  if (match.statut === 'TERMINE' && match.canEditScore && match.score) {
+    return (
+      <CorrigerScoreDialog
+        concoursId={concoursId}
+        matchId={match.id}
+        equipeANom={equipeANom}
+        equipeBNom={equipeBNom}
+        currentScore={match.score}
+      />
+    );
+  }
   return null;
 }
 
@@ -290,18 +302,17 @@ export function PoolGroupCard({
                         <span className="text-xs text-muted-foreground">T{m.terrainNumero}</span>
                       )}
                       <div className="ml-2 flex items-center gap-1">
-                        {isTermine ? (
+                        {isTermine && (
                           <Badge variant="secondary" className="text-xs">
                             Terminé
                           </Badge>
-                        ) : (
-                          <PoolMatchActions
-                            match={m}
-                            concoursId={concoursId}
-                            equipeANom={nomA}
-                            equipeBNom={nomB}
-                          />
                         )}
+                        <PoolMatchActions
+                          match={m}
+                          concoursId={concoursId}
+                          equipeANom={nomA}
+                          equipeBNom={nomB}
+                        />
                       </div>
                     </div>
                   );

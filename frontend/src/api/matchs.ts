@@ -38,6 +38,17 @@ export function declarerForfait(
   });
 }
 
+export function corrigerScore(
+  concoursId: string,
+  matchId: string,
+  payload: SaisirScorePayload,
+): Promise<void> {
+  return apiFetch(`/concours/${concoursId}/matchs/${matchId}/corriger-score`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function assignerTerrain(
   concoursId: string,
   matchId: string,

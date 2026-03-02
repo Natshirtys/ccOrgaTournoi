@@ -76,6 +76,7 @@ export interface MatchDto {
   statut: StatutMatch;
   score?: { equipeA: number; equipeB: number };
   resultat?: string;
+  canEditScore?: boolean;
 }
 
 export interface LigneClassementDto {
