@@ -7,16 +7,15 @@ import { StatutMatch } from '../../domain/shared/enums.js';
  * Privilégie les terrains sur lesquels les équipes n'ont pas encore joué (best effort).
  */
 export function assignerTerrainsAuTour(concours: Concours, tour: Tour): void {
-  // 1. Collecter les terrainIds occupés (matchs PROGRAMME ou EN_COURS dans TOUTES les phases)
+  // 1. Collecter les terrainIds réellement occupés (matchs EN_COURS seulement).
+  // Les matchs PROGRAMME appartiennent à des tours futurs qui jouent séquentiellement :
+  // leurs terrains seront libres quand le tour actuel commencera.
   const terrainsOccupes = new Set<string>();
   for (const phase of concours.phases) {
     for (const t of phase.tours) {
       if (t === tour) continue; // ignorer le tour qu'on est en train d'assigner
       for (const m of t.matchs) {
-        if (
-          m.terrainId &&
-          (m.statut === StatutMatch.PROGRAMME || m.statut === StatutMatch.EN_COURS)
-        ) {
+        if (m.terrainId && m.statut === StatutMatch.EN_COURS) {
           terrainsOccupes.add(m.terrainId);
         }
       }
