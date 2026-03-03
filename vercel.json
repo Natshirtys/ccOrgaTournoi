@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "src/api/handler.ts",
+      "use": "@vercel/node",
+      "config": { "includeFiles": ["src/**"] }
+    },
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "frontend/dist" }
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "src/api/handler.ts" },
+    { "src": "/(.*)",     "dest": "frontend/$1" }
+  ]
+}
