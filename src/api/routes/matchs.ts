@@ -16,7 +16,7 @@ import { RoundRobinPoolStrategy, buildSymmetricKoMatchups } from '../../engine/s
 import { SingleEliminationStrategy } from '../../engine/strategies/phase/single-elimination-strategy.js';
 import { ComplementaireStrategy } from '../../engine/strategies/phase/complementaire-strategy.js';
 import { SwissSystemStrategy } from '../../engine/strategies/phase/swiss-system-strategy.js';
-import { assignerTerrainsAuTour } from '../helpers/terrain-assignment.js';
+import { assignerTerrainsAuTour, assignerTerrainsToursNonAssignes } from '../helpers/terrain-assignment.js';
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
@@ -97,7 +97,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
 
   // POST /:id/matchs/:matchId/score — Saisir le score et valider
   router.post('/:id/matchs/:matchId/score', validateBody(saisirScoreSchema), asyncHandler(async (req, res) => {
-    const { concours, match } = await findMatch(ctx, param(req.params.id), param(req.params.matchId));
+    const { concours, phase, tour, match } = await findMatchWithContext(ctx, param(req.params.id), param(req.params.matchId));
     const { scoreEquipeA, scoreEquipeB } = req.body;
 
     const score = new Score(scoreEquipeA, scoreEquipeB);
@@ -130,6 +130,9 @@ export function createMatchsRouter(ctx: AppContext): Router {
       if (terrain) terrain.liberer();
     }
 
+    // Assigner les terrains aux tours suivants si le tour courant est maintenant complet
+    assignerTerrainsToursNonAssignes(concours, tour, phase.tours);
+
     await ctx.concoursRepository.save(concours);
 
     res.json({
@@ -142,7 +145,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
 
   // POST /:id/matchs/:matchId/forfait — Déclarer forfait
   router.post('/:id/matchs/:matchId/forfait', validateBody(declarerForfaitSchema), asyncHandler(async (req, res) => {
-    const { concours, match } = await findMatch(ctx, param(req.params.id), param(req.params.matchId));
+    const { concours, phase, tour, match } = await findMatchWithContext(ctx, param(req.params.id), param(req.params.matchId));
 
     match.declarerForfait(req.body.equipeDeclarantForfaitId);
 
@@ -151,6 +154,9 @@ export function createMatchsRouter(ctx: AppContext): Router {
       const terrain = concours.terrains.find((t) => t.id === match.terrainId);
       if (terrain) terrain.liberer();
     }
+
+    // Assigner les terrains aux tours suivants si le tour courant est maintenant complet
+    assignerTerrainsToursNonAssignes(concours, tour, phase.tours);
 
     const vainqueurId = req.body.equipeDeclarantForfaitId === match.equipeAId ? match.equipeBId! : match.equipeAId;
     await ctx.concoursRepository.save(concours);

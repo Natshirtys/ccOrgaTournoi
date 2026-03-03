@@ -90,3 +90,23 @@ export function assignerTerrainsAuTour(concours: Concours, tour: Tour): void {
     disponibles.splice(bestIdx, 1);
   }
 }
+
+/**
+ * Après qu'un match se termine, vérifie si le tour courant est complet.
+ * Si oui, assigne les terrains aux tours suivants de la même phase qui n'en ont pas encore.
+ * Permet de gérer les tirages existants et les modes où tous les tours sont pré-générés (CHAMPIONNAT).
+ */
+export function assignerTerrainsToursNonAssignes(concours: Concours, tourCourant: Tour, phaseTours: Tour[]): void {
+  const tourComplet = tourCourant.matchs.every(
+    (m) => m.isBye || m.statut === StatutMatch.TERMINE || m.statut === StatutMatch.FORFAIT,
+  );
+  if (!tourComplet) return;
+
+  const toursAAssigner = phaseTours
+    .filter((t) => t.numero > tourCourant.numero)
+    .filter((t) => t.matchs.some((m) => !m.isBye && !m.terrainId));
+
+  for (const tour of toursAAssigner) {
+    assignerTerrainsAuTour(concours, tour);
+  }
+}
