@@ -1,19 +1,14 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "src/api/handler.ts",
-      "use": "@vercel/node",
-      "config": { "includeFiles": ["src/**"] }
-    },
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+  "buildCommand": "npm --prefix frontend install && npm --prefix frontend run build",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "src/**"
     }
-  ],
+  },
   "routes": [
-    { "src": "/api/(.*)", "dest": "src/api/handler.ts" },
+    { "src": "/api/(.*)", "dest": "/api/index" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
