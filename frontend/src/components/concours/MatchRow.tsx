@@ -20,9 +20,10 @@ interface MatchRowProps {
   equipeANom: string;
   equipeBNom: string;
   terrains?: TerrainDto[];
+  readOnly?: boolean;
 }
 
-export function MatchRow({ match, concoursId, equipeANom, equipeBNom, terrains = [] }: MatchRowProps) {
+export function MatchRow({ match, concoursId, equipeANom, equipeBNom, terrains = [], readOnly = false }: MatchRowProps) {
   const queryClient = useQueryClient();
 
   const demarrerMutation = useMutation({
@@ -48,7 +49,7 @@ export function MatchRow({ match, concoursId, equipeANom, equipeBNom, terrains =
 
   const statutConfig = STATUT_MATCH_LABELS[match.statut] ?? { label: match.statut, variant: 'outline' as const };
   const score = match.score;
-  const canChangeTerrain = match.statut === 'PROGRAMME' || match.statut === 'EN_COURS';
+  const canChangeTerrain = !readOnly && (match.statut === 'PROGRAMME' || match.statut === 'EN_COURS');
 
   return (
     <TableRow>
@@ -87,7 +88,7 @@ export function MatchRow({ match, concoursId, equipeANom, equipeBNom, terrains =
       </TableCell>
       <TableCell>
         <div className="flex gap-2">
-          {match.statut === 'PROGRAMME' && (
+          {!readOnly && match.statut === 'PROGRAMME' && (
             <Button
               size="sm"
               variant="outline"
@@ -97,7 +98,7 @@ export function MatchRow({ match, concoursId, equipeANom, equipeBNom, terrains =
               Démarrer
             </Button>
           )}
-          {match.statut === 'EN_COURS' && (
+          {!readOnly && match.statut === 'EN_COURS' && (
             <>
               <SaisirScoreDialog
                 concoursId={concoursId}
@@ -120,7 +121,7 @@ export function MatchRow({ match, concoursId, equipeANom, equipeBNom, terrains =
               {match.resultat && (
                 <span className="text-sm text-muted-foreground">{match.resultat}</span>
               )}
-              {match.canEditScore && match.score && (
+              {!readOnly && match.canEditScore && match.score && (
                 <CorrigerScoreDialog
                   concoursId={concoursId}
                   matchId={match.id}

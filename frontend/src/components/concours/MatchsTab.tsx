@@ -40,6 +40,7 @@ function getPhaseHeaderClass(phaseType: string, phaseNom?: string): string {
 
 interface MatchsTabProps {
   concours: ConcoursDetail;
+  readOnly?: boolean;
 }
 
 interface PoolGroup {
@@ -74,11 +75,11 @@ function reconstructPools(matchs: MatchDto[]): PoolGroup[] {
   return pools;
 }
 
-export function MatchsTab({ concours }: MatchsTabProps) {
+export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
   const { data, isLoading } = useQuery({
     queryKey: ['concours', concours.id, 'matchs'],
     queryFn: () => fetchMatchs(concours.id),
-    enabled: concours.statut === 'EN_COURS' || concours.statut === 'TERMINE',
+    enabled: concours.statut === 'EN_COURS' || concours.statut === 'TERMINE' || concours.statut === 'ARCHIVE',
   });
 
   const equipeLookup = useMemo(() => {
@@ -193,6 +194,7 @@ export function MatchsTab({ concours }: MatchsTabProps) {
                 equipeLookup={equipeLookup}
                 concoursId={concours.id}
                 mode="gsl"
+                readOnly={readOnly}
               />
             ) : /* Rendu spécialisé Championnat (poules round-robin) */
             phaseType === 'CHAMPIONNAT' && phaseData ? (
@@ -201,6 +203,7 @@ export function MatchsTab({ concours }: MatchsTabProps) {
                 equipeLookup={equipeLookup}
                 concoursId={concours.id}
                 mode="roundrobin"
+                readOnly={readOnly}
               />
             ) : /* Rendu spécialisé KO */
             (phaseType === 'ELIMINATION_SIMPLE' || phaseType === 'CONSOLANTE') && phaseData ? (
@@ -211,6 +214,7 @@ export function MatchsTab({ concours }: MatchsTabProps) {
                 variant={phaseType === 'CONSOLANTE' ? 'consolante' : 'principal'}
                 phaseId={phaseId}
                 terrains={concours.terrains}
+                readOnly={readOnly}
               />
             ) : (
               /* Fallback : rendu tableau classique */
@@ -219,6 +223,7 @@ export function MatchsTab({ concours }: MatchsTabProps) {
                 equipeLookup={equipeLookup}
                 concoursId={concours.id}
                 terrains={concours.terrains}
+                readOnly={readOnly}
               />
             )}
           </div>
@@ -235,11 +240,13 @@ function PoolsPhaseView({
   equipeLookup,
   concoursId,
   mode,
+  readOnly,
 }: {
   matchs: MatchDto[];
   equipeLookup: Map<string, string>;
   concoursId: string;
   mode: 'gsl' | 'roundrobin';
+  readOnly?: boolean;
 }) {
   const pools = useMemo(() => reconstructPools(matchs), [matchs]);
 
@@ -254,6 +261,7 @@ function PoolsPhaseView({
           equipeLookup={equipeLookup}
           concoursId={concoursId}
           mode={mode}
+          readOnly={readOnly}
         />
       ))}
     </div>
@@ -265,11 +273,13 @@ function TablePhaseView({
   equipeLookup,
   concoursId,
   terrains = [],
+  readOnly,
 }: {
   tours: { tourNum: number; nom?: string; matchs: MatchDto[] }[];
   equipeLookup: Map<string, string>;
   concoursId: string;
   terrains?: TerrainDto[];
+  readOnly?: boolean;
 }) {
   return (
     <>
@@ -302,6 +312,7 @@ function TablePhaseView({
                     equipeANom={equipeLookup.get(m.equipeAId) ?? m.equipeAId}
                     equipeBNom={equipeLookup.get(m.equipeBId) ?? m.equipeBId}
                     terrains={terrains}
+                    readOnly={readOnly}
                   />
                 ))}
               </TableBody>

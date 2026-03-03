@@ -29,6 +29,7 @@ interface PoolGroupCardProps {
   equipeLookup: Map<string, string>;
   concoursId: string;
   mode?: 'gsl' | 'roundrobin';
+  readOnly?: boolean;
 }
 
 interface TeamStats {
@@ -116,11 +117,13 @@ function PoolMatchActions({
   concoursId,
   equipeANom,
   equipeBNom,
+  readOnly,
 }: {
   match: MatchDto;
   concoursId: string;
   equipeANom: string;
   equipeBNom: string;
+  readOnly?: boolean;
 }) {
   const queryClient = useQueryClient();
 
@@ -129,6 +132,8 @@ function PoolMatchActions({
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['concours', concoursId, 'matchs'] }),
   });
+
+  if (readOnly) return null;
 
   if (match.statut === 'PROGRAMME') {
     return (
@@ -181,6 +186,7 @@ export function PoolGroupCard({
   equipeLookup,
   concoursId,
   mode = 'gsl',
+  readOnly,
 }: PoolGroupCardProps) {
   const pouleName = `POULE ${LETTERS[pouleIndex] ?? pouleIndex + 1}`;
   const tourLabels = mode === 'roundrobin' ? TOUR_LABELS_RR : TOUR_LABELS_GSL;
@@ -312,6 +318,7 @@ export function PoolGroupCard({
                           concoursId={concoursId}
                           equipeANom={nomA}
                           equipeBNom={nomB}
+                          readOnly={readOnly}
                         />
                       </div>
                     </div>

@@ -3,12 +3,24 @@ import { Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { ConcoursStatusBadge } from './ConcoursStatusBadge';
 import {
   ouvrirInscriptions,
   cloturerInscriptions,
   lancerTirage,
   genererTourSuivant,
+  terminerConcours,
 } from '@/api/concours';
 import type { ConcoursDetail, TypePhase } from '@/types/concours';
 
@@ -153,6 +165,11 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
     },
   });
 
+  const terminerMutation = useMutation({
+    mutationFn: () => terminerConcours(concours.id),
+    onSuccess: invalidateAll,
+  });
+
   const statut = concours.statut;
   const typePhase = concours.formule.typePhase ?? concours.phases[0]?.type;
 
@@ -240,14 +257,38 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
             </Button>
           )}
           {statut === 'EN_COURS' && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => tourSuivantMutation.mutate()}
-              disabled={tourSuivantMutation.isPending}
-            >
-              {tourSuivantMutation.isPending ? 'En cours...' : 'Tour / phase suivant(e)'}
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => tourSuivantMutation.mutate()}
+                disabled={tourSuivantMutation.isPending}
+              >
+                {tourSuivantMutation.isPending ? 'En cours...' : 'Tour / phase suivant(e)'}
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="outline" disabled={terminerMutation.isPending}>
+                    Terminer le concours
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Terminer le concours ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Le concours passera en statut <strong>TERMINÉ</strong>. Tous les matchs doivent être joués.
+                      Cette action est irréversible (sauf archivage).
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => terminerMutation.mutate()}>
+                      Terminer
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
           )}
         </div>
       </CardContent>

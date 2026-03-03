@@ -50,3 +50,15 @@ export function genererTourSuivant(id: string, phaseId?: string): Promise<void> 
     body: phaseId ? JSON.stringify({ phaseId }) : undefined,
   });
 }
+
+export function terminerConcours(id: string): Promise<{ statut: string }> {
+  return apiFetch(`/concours/${id}/terminer`, { method: 'POST' });
+}
+
+export function archiverConcours(id: string): Promise<{ statut: string }> {
+  return apiFetch(`/concours/${id}/archiver`, { method: 'POST' });
+}
+
+export function supprimerConcours(id: string): Promise<void> {
+  return apiFetch(`/concours/${id}`, { method: 'DELETE' });
+}

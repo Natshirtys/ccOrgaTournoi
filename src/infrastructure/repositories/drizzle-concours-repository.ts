@@ -19,6 +19,10 @@ export class DrizzleConcoursRepository implements ConcoursRepository {
     return deserialize(rows[0].data as ConcoursData);
   }
 
+  async delete(id: EntityId): Promise<void> {
+    await db.delete(concoursTable).where(eq(concoursTable.id, id));
+  }
+
   async save(concours: Concours): Promise<void> {
     const data = serialize(concours);
     await db

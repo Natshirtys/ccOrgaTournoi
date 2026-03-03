@@ -44,7 +44,7 @@ export function ClassementTab({ concours }: ClassementTabProps) {
     return <p className="py-8 text-center text-muted-foreground">Chargement du classement...</p>;
   }
 
-  const classement = data?.data ?? [];
+  const classement = data?.classement ?? [];
 
   if (classement.length === 0) {
     return <p className="py-8 text-center text-muted-foreground">Classement non disponible.</p>;

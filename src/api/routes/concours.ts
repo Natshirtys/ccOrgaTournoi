@@ -11,7 +11,7 @@ import { Phase } from '../../domain/concours/entities/phase.js';
 import { Tour } from '../../domain/concours/entities/tour.js';
 import { Match } from '../../domain/concours/entities/match.js';
 import { DateRange, FormuleConcours, ReglementConcours, PhaseDefinition, QualificationRule } from '../../domain/shared/value-objects.js';
-import { TypeEquipe, TypePhase, CritereClassement, TypeQualification } from '../../domain/shared/enums.js';
+import { TypeEquipe, TypePhase, CritereClassement, TypeQualification, StatutConcours } from '../../domain/shared/enums.js';
 import { IntegralDrawStrategy } from '../../engine/strategies/draw/integral-draw-strategy.js';
 import { assignerTerrainsAuTour } from '../helpers/terrain-assignment.js';
 import { PoolPhaseStrategy } from '../../engine/strategies/phase/pool-phase-strategy.js';
@@ -218,6 +218,41 @@ export function createConcoursRouter(ctx: AppContext): Router {
       equipeNom: data.nomEquipe,
       nbInscrites: concours.nbEquipesInscrites,
     });
+  }));
+
+  // POST /:id/terminer — Terminer manuellement un concours EN_COURS
+  router.post('/:id/terminer', asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+
+    concours.terminer();
+    await ctx.concoursRepository.save(concours);
+
+    res.json({ statut: concours.statut });
+  }));
+
+  // DELETE /:id — Supprimer un concours (interdit si EN_COURS ou ARCHIVE)
+  router.delete('/:id', asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+
+    if (concours.statut === StatutConcours.EN_COURS) {
+      throw ApiError.conflict('Impossible de supprimer un concours en cours');
+    }
+
+    await ctx.concoursRepository.delete(concours.id);
+    res.status(204).end();
+  }));
+
+  // POST /:id/archiver — Archiver un concours TERMINE
+  router.post('/:id/archiver', asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+
+    concours.archiver();
+    await ctx.concoursRepository.save(concours);
+
+    res.json({ statut: concours.statut });
   }));
 
   // POST /:id/tirage — Lancer le tirage et générer la phase

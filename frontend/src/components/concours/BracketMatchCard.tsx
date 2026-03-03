@@ -11,9 +11,10 @@ interface BracketMatchCardProps {
   equipeLookup: Map<string, string>;
   variant?: 'principal' | 'consolante';
   terrains?: TerrainDto[];
+  readOnly?: boolean;
 }
 
-export function BracketMatchCard({ match, concoursId, equipeLookup, variant = 'principal', terrains = [] }: BracketMatchCardProps) {
+export function BracketMatchCard({ match, concoursId, equipeLookup, variant = 'principal', terrains = [], readOnly = false }: BracketMatchCardProps) {
   const queryClient = useQueryClient();
 
   const demarrerMutation = useMutation({
@@ -43,7 +44,7 @@ export function BracketMatchCard({ match, concoursId, equipeLookup, variant = 'p
   const actionBg = isConsolante ? 'bg-amber-800' : 'bg-[var(--color-bracket-card)]';
 
   // Terrains disponibles pour le sélecteur (pas utilisés par un autre match actif)
-  const canChangeTerrain = match.statut === 'PROGRAMME' || match.statut === 'EN_COURS';
+  const canChangeTerrain = !readOnly && (match.statut === 'PROGRAMME' || match.statut === 'EN_COURS');
 
   return (
     <div className={`bracket-match-card w-full rounded-lg overflow-hidden shadow-sm border ${borderColor}`}>
@@ -103,7 +104,7 @@ export function BracketMatchCard({ match, concoursId, equipeLookup, variant = 'p
       </div>
       {/* Actions — always rendered to keep consistent card height */}
       <div className={`flex justify-center ${actionBg} px-2 py-1.5 min-h-[2rem]`}>
-        {match.statut === 'PROGRAMME' && (
+        {!readOnly && match.statut === 'PROGRAMME' && (
           <Button
             size="sm"
             variant="secondary"
@@ -114,7 +115,7 @@ export function BracketMatchCard({ match, concoursId, equipeLookup, variant = 'p
             Démarrer
           </Button>
         )}
-        {match.statut === 'EN_COURS' && (
+        {!readOnly && match.statut === 'EN_COURS' && (
           <SaisirScoreDialog
             concoursId={concoursId}
             matchId={match.id}
@@ -122,7 +123,7 @@ export function BracketMatchCard({ match, concoursId, equipeLookup, variant = 'p
             equipeBNom={nomB}
           />
         )}
-        {match.statut === 'TERMINE' && match.canEditScore && match.score && (
+        {!readOnly && match.statut === 'TERMINE' && match.canEditScore && match.score && (
           <CorrigerScoreDialog
             concoursId={concoursId}
             matchId={match.id}

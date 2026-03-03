@@ -13,6 +13,7 @@ interface KnockoutBracketProps {
   variant?: 'principal' | 'consolante';
   phaseId?: string;
   terrains?: TerrainDto[];
+  readOnly?: boolean;
 }
 
 const ROUND_NAMES: Record<number, string> = {
@@ -34,6 +35,7 @@ export function KnockoutBracket({
   variant = 'principal',
   phaseId,
   terrains = [],
+  readOnly = false,
 }: KnockoutBracketProps) {
   const queryClient = useQueryClient();
 
@@ -131,6 +133,7 @@ export function KnockoutBracket({
                       equipeLookup={equipeLookup}
                       variant={variant}
                       terrains={terrains}
+                      readOnly={readOnly}
                     />
                     {/* Connector: horizontal line going right */}
                     {colIdx < totalRounds - 1 && (
@@ -152,7 +155,7 @@ export function KnockoutBracket({
       </div>
 
       {/* Tour suivant button per bracket */}
-      {canAdvance && phaseId && (
+      {!readOnly && canAdvance && phaseId && (
         <div className="flex justify-center">
           <Button
             size="sm"

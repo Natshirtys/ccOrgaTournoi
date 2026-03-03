@@ -60,6 +60,6 @@ export function assignerTerrain(
   });
 }
 
-export function fetchClassement(concoursId: string): Promise<{ data: LigneClassementDto[] }> {
+export function fetchClassement(concoursId: string): Promise<{ phaseId: string; classement: LigneClassementDto[] }> {
   return apiFetch(`/concours/${concoursId}/classement`);
 }

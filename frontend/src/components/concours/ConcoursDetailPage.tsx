@@ -9,9 +9,9 @@ import { MatchsTab } from './MatchsTab';
 import { ClassementTab } from './ClassementTab';
 import type { StatutConcours } from '@/types/concours';
 
-function getDefaultTab(statut: StatutConcours): string {
+function getDefaultTab(statut: StatutConcours, hasSystemeSuisse: boolean): string {
   if (statut === 'EN_COURS') return 'matchs';
-  if (statut === 'TERMINE' || statut === 'ARCHIVE') return 'classement';
+  if (statut === 'TERMINE' || statut === 'ARCHIVE') return hasSystemeSuisse ? 'classement' : 'matchs';
   return 'inscriptions';
 }
 
@@ -44,7 +44,9 @@ export function ConcoursDetailPage({ concoursId, onBack }: ConcoursDetailPagePro
   }
 
   const hasPhases = concours.phases.length > 0;
-  const matchsEnabled = concours.statut === 'EN_COURS' || concours.statut === 'TERMINE';
+  const hasSystemeSuisse = concours.phases.some((p) => p.type === 'SYSTEME_SUISSE');
+  const matchsEnabled = concours.statut === 'EN_COURS' || concours.statut === 'TERMINE' || concours.statut === 'ARCHIVE';
+  const readOnly = concours.statut === 'ARCHIVE';
 
   return (
     <div className="space-y-6">
@@ -54,16 +56,18 @@ export function ConcoursDetailPage({ concoursId, onBack }: ConcoursDetailPagePro
 
       <ConcoursInfoCard concours={concours} />
 
-      <Tabs defaultValue={getDefaultTab(concours.statut)}>
+      <Tabs defaultValue={getDefaultTab(concours.statut, hasSystemeSuisse)}>
         <TabsList>
           <TabsTrigger value="inscriptions">Inscriptions</TabsTrigger>
           <TabsTrigger value="terrains">Terrains</TabsTrigger>
           <TabsTrigger value="matchs" disabled={!matchsEnabled}>
             Matchs
           </TabsTrigger>
-          <TabsTrigger value="classement" disabled={!hasPhases}>
-            Classement
-          </TabsTrigger>
+          {hasSystemeSuisse && (
+            <TabsTrigger value="classement" disabled={!hasPhases}>
+              Classement
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="inscriptions">
           <InscriptionsTab concours={concours} />
@@ -72,11 +76,13 @@ export function ConcoursDetailPage({ concoursId, onBack }: ConcoursDetailPagePro
           <TerrainsTab concours={concours} />
         </TabsContent>
         <TabsContent value="matchs">
-          <MatchsTab concours={concours} />
+          <MatchsTab concours={concours} readOnly={readOnly} />
         </TabsContent>
-        <TabsContent value="classement">
-          <ClassementTab concours={concours} />
-        </TabsContent>
+        {hasSystemeSuisse && (
+          <TabsContent value="classement">
+            <ClassementTab concours={concours} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

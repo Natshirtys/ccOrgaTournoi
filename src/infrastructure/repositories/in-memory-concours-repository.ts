@@ -19,6 +19,10 @@ export class InMemoryConcoursRepository implements ConcoursRepository {
     this.store.set(concours.id, concours);
   }
 
+  async delete(id: EntityId): Promise<void> {
+    this.store.delete(id);
+  }
+
   async findByStatut(statut: StatutConcours): Promise<Concours[]> {
     return Array.from(this.store.values()).filter((c) => c.statut === statut);
   }

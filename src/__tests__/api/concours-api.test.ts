@@ -21,7 +21,8 @@ async function request(app: express.Express, method: string, path: string, body?
         body: body ? JSON.stringify(body) : undefined,
       })
         .then(async (res) => {
-          const json = await res.json() as Record<string, unknown>;
+          const text = await res.text();
+          const json = text ? JSON.parse(text) as Record<string, unknown> : {};
           server.close();
           resolve({ status: res.status, body: json });
         })
@@ -282,5 +283,65 @@ describe('API Concours', () => {
     // 13. Vérifier que la phase est terminée
     const endRes = await request(app, 'POST', `/api/v1/concours/${concoursId}/generer-tour-suivant`);
     expect(endRes.body.message).toMatch(/terminée/i);
+  });
+
+  it('DELETE /api/v1/concours/:id supprime un concours en BROUILLON', async () => {
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'À supprimer',
+      dateDebut: '2026-08-01',
+      organisateurId: 'org-1',
+      typeEquipe: 'DOUBLETTE',
+    });
+    expect(createRes.status).toBe(201);
+    const id = createRes.body.id as string;
+
+    const delRes = await request(app, 'DELETE', `/api/v1/concours/${id}`);
+    expect(delRes.status).toBe(204);
+
+    const getRes = await request(app, 'GET', `/api/v1/concours/${id}`);
+    expect(getRes.status).toBe(404);
+  });
+
+  it('DELETE /api/v1/concours/:id retourne 404 si inexistant', async () => {
+    const res = await request(app, 'DELETE', '/api/v1/concours/inexistant');
+    expect(res.status).toBe(404);
+  });
+
+  it('DELETE /api/v1/concours/:id retourne 409 si statut EN_COURS', async () => {
+    // Créer un concours avec 4 équipes et lancer le tirage → statut EN_COURS
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'En cours non supprimable',
+      dateDebut: '2026-08-01',
+      organisateurId: 'org-1',
+      typeEquipe: 'DOUBLETTE',
+      nbEquipesMin: 4,
+    });
+    const id = createRes.body.id as string;
+
+    await request(app, 'POST', `/api/v1/concours/${id}/ouvrir-inscriptions`);
+    for (let i = 1; i <= 4; i++) {
+      await request(app, 'POST', `/api/v1/concours/${id}/inscriptions`, { nomEquipe: `Equipe ${i}` });
+    }
+    await request(app, 'POST', `/api/v1/concours/${id}/cloturer-inscriptions`);
+    const tirageRes = await request(app, 'POST', `/api/v1/concours/${id}/tirage`, { nbPoules: 1 });
+    expect(tirageRes.status).toBe(201);
+    expect(tirageRes.body.statut).toBe('EN_COURS');
+
+    // Tenter de supprimer un concours EN_COURS
+    const delRes = await request(app, 'DELETE', `/api/v1/concours/${id}`);
+    expect(delRes.status).toBe(409);
+  });
+
+  it('POST /:id/archiver retourne 409 si statut ≠ TERMINE', async () => {
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'Brouillon non archivable',
+      dateDebut: '2026-09-01',
+      organisateurId: 'org-1',
+      typeEquipe: 'TETE_A_TETE',
+    });
+    const id = createRes.body.id as string;
+
+    const archRes = await request(app, 'POST', `/api/v1/concours/${id}/archiver`);
+    expect(archRes.status).toBe(409);
   });
 });
