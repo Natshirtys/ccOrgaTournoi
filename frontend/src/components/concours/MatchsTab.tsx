@@ -194,6 +194,7 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
                 equipeLookup={equipeLookup}
                 concoursId={concours.id}
                 mode="gsl"
+                terrains={concours.terrains}
                 readOnly={readOnly}
               />
             ) : /* Rendu spécialisé Championnat (poules round-robin) */
@@ -203,6 +204,7 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
                 equipeLookup={equipeLookup}
                 concoursId={concours.id}
                 mode="roundrobin"
+                terrains={concours.terrains}
                 readOnly={readOnly}
               />
             ) : /* Rendu spécialisé KO */
@@ -240,12 +242,14 @@ function PoolsPhaseView({
   equipeLookup,
   concoursId,
   mode,
+  terrains = [],
   readOnly,
 }: {
   matchs: MatchDto[];
   equipeLookup: Map<string, string>;
   concoursId: string;
   mode: 'gsl' | 'roundrobin';
+  terrains?: TerrainDto[];
   readOnly?: boolean;
 }) {
   const pools = useMemo(() => reconstructPools(matchs), [matchs]);
@@ -261,6 +265,7 @@ function PoolsPhaseView({
           equipeLookup={equipeLookup}
           concoursId={concoursId}
           mode={mode}
+          terrains={terrains}
           readOnly={readOnly}
         />
       ))}

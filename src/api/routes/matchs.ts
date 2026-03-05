@@ -76,7 +76,9 @@ export function createMatchsRouter(ctx: AppContext): Router {
             terrainNom: match.terrainId
               ? concours.terrains.find((t) => t.id === match.terrainId)?.nom ?? null
               : null,
-            canEditScore: match.statut === 'TERMINE' && !phase.tours.some((t) => t.numero > tour.numero),
+            canEditScore: match.statut === 'TERMINE' && !phase.tours.some(
+              (t) => t.numero > tour.numero && t.matchs.some((m) => m.statut !== 'PROGRAMME'),
+            ),
           });
         }
       }
@@ -178,24 +180,39 @@ export function createMatchsRouter(ctx: AppContext): Router {
     const terrain = concours.terrains.find((t) => t.id === terrainId);
     if (!terrain) throw ApiError.notFound('Terrain non trouvé');
 
-    // Vérifier que le terrain n'est pas utilisé par un autre match en cours
+    // Vérifier que le terrain n'est pas utilisé par un match EN_COURS
+    // (l'échange avec un match PROGRAMME est autorisé)
+    let autreMatchAvecCeTerrain: Match | undefined;
     for (const phase of concours.phases) {
       for (const tour of phase.tours) {
         for (const m of tour.matchs) {
-          if (m.id !== match.id && m.terrainId === terrainId && !m.isTermine && !m.isBye) {
-            throw ApiError.badRequest('Ce terrain est déjà utilisé par un autre match en cours');
+          if (m.id !== match.id && m.terrainId === terrainId && !m.isBye) {
+            if (m.statut === 'EN_COURS') {
+              throw ApiError.badRequest('Ce terrain est utilisé par un match en cours');
+            }
+            // Terrain d'un match terminé = libre, pas de swap à faire
+            if (!m.isTermine) {
+              autreMatchAvecCeTerrain = m as Match;
+            }
           }
         }
       }
     }
 
-    // Libérer l'ancien terrain si le match en avait un
-    if (match.terrainId) {
-      const ancienTerrain = concours.terrains.find((t) => t.id === match.terrainId);
+    const oldTerrainId = match.terrainId;
+
+    // Libérer l'ancien terrain si le match courant était EN_COURS
+    if (oldTerrainId && match.statut === 'EN_COURS') {
+      const ancienTerrain = concours.terrains.find((t) => t.id === oldTerrainId);
       if (ancienTerrain) ancienTerrain.liberer();
     }
 
-    // Assigner le nouveau terrain
+    // Swap : si l'autre match PROGRAMME avait ce terrain, lui donner notre ancien terrain
+    if (autreMatchAvecCeTerrain && oldTerrainId) {
+      autreMatchAvecCeTerrain.assignerTerrain(oldTerrainId);
+    }
+
+    // Assigner le nouveau terrain à ce match
     match.assignerTerrain(terrainId);
 
     // Si le match est en cours, marquer le terrain comme occupé
@@ -217,9 +234,11 @@ export function createMatchsRouter(ctx: AppContext): Router {
       throw ApiError.badRequest('Seul un match terminé peut être corrigé');
     }
 
-    const tourSuivantExiste = phase.tours.some((t) => t.numero > tour.numero);
-    if (tourSuivantExiste) {
-      throw ApiError.badRequest('Impossible de corriger : le tour suivant a déjà été généré');
+    const tourSuivantDemarre = phase.tours.some(
+      (t) => t.numero > tour.numero && t.matchs.some((m) => m.statut !== 'PROGRAMME'),
+    );
+    if (tourSuivantDemarre) {
+      throw ApiError.badRequest('Impossible de corriger : le tour suivant a déjà commencé');
     }
 
     match.demanderCorrection();

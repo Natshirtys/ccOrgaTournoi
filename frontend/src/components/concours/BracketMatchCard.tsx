@@ -66,8 +66,8 @@ export function BracketMatchCard({ match, concoursId, equipeLookup, variant = 'p
               {terrains
                 .filter((t) => t.id !== match.terrainId)
                 .map((t) => (
-                  <option key={t.id} value={t.id}>
-                    T{t.numero}
+                  <option key={t.id} value={t.id} disabled={!t.disponible}>
+                    T{t.numero}{!t.disponible ? ' (en cours)' : ''}
                   </option>
                 ))}
             </select>

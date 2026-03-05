@@ -7,94 +7,128 @@
  * Gris foncé: #414042  → hsl(300 1.5% 25.5%)
  */
 
+/* ─── Variables : mode clair ────────────────────────────────────────────── */
+:root {
+  --background:             hsl(0 0% 100%);
+  --foreground:             hsl(300 1.5% 25.5%);
+  --card:                   hsl(0 0% 100%);
+  --card-foreground:        hsl(300 1.5% 25.5%);
+  --popover:                hsl(0 0% 100%);
+  --popover-foreground:     hsl(300 1.5% 25.5%);
+  --primary:                hsl(207 75% 42%);
+  --primary-foreground:     hsl(0 0% 100%);
+  --secondary:              hsl(207 30% 95%);
+  --secondary-foreground:   hsl(207 75% 35%);
+  --muted:                  hsl(210 20% 96%);
+  --muted-foreground:       hsl(300 1.5% 40%);
+  --accent:                 hsl(207 40% 93%);
+  --accent-foreground:      hsl(207 75% 35%);
+  --destructive:            hsl(0 72% 51%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border:                 hsl(207 20% 88%);
+  --input:                  hsl(207 20% 88%);
+  --ring:                   hsl(207 75% 42%);
+  --success:                hsl(142 71% 45%);
+  --success-foreground:     hsl(0 0% 100%);
+  --bracket-bg:             hsl(225 50% 25%);
+  --bracket-card:           hsl(225 40% 35%);
+  --bracket-line:           hsl(45 90% 55%);
+}
+
+/* ─── Variables : mode sombre ───────────────────────────────────────────── */
+.dark {
+  --background:             hsl(225 30% 9%);
+  --foreground:             hsl(210 30% 92%);
+  --card:                   hsl(225 22% 17%);
+  --card-foreground:        hsl(210 30% 92%);
+  --popover:                hsl(225 25% 14%);
+  --popover-foreground:     hsl(210 30% 92%);
+  --primary:                hsl(207 80% 58%);
+  --primary-foreground:     hsl(0 0% 100%);
+  --secondary:              hsl(225 20% 20%);
+  --secondary-foreground:   hsl(207 75% 72%);
+  --muted:                  hsl(225 15% 24%);
+  --muted-foreground:       hsl(210 15% 68%);
+  --accent:                 hsl(225 20% 22%);
+  --accent-foreground:      hsl(207 75% 72%);
+  --destructive:            hsl(0 70% 58%);
+  --destructive-foreground: hsl(0 0% 100%);
+  --border:                 hsl(225 15% 30%);
+  --input:                  hsl(225 18% 22%);
+  --ring:                   hsl(207 80% 58%);
+  --success:                hsl(142 60% 48%);
+  --success-foreground:     hsl(0 0% 100%);
+  --bracket-bg:             hsl(225 40% 18%);
+  --bracket-card:           hsl(225 35% 26%);
+  --bracket-line:           hsl(45 90% 55%);
+}
+
+/* ─── Mapping Tailwind utilities ────────────────────────────────────────── */
 @theme inline {
-  /* Fond & texte */
-  --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(300 1.5% 25.5%);
+  --color-background:             var(--background);
+  --color-foreground:             var(--foreground);
+  --color-card:                   var(--card);
+  --color-card-foreground:        var(--card-foreground);
+  --color-popover:                var(--popover);
+  --color-popover-foreground:     var(--popover-foreground);
+  --color-primary:                var(--primary);
+  --color-primary-foreground:     var(--primary-foreground);
+  --color-secondary:              var(--secondary);
+  --color-secondary-foreground:   var(--secondary-foreground);
+  --color-muted:                  var(--muted);
+  --color-muted-foreground:       var(--muted-foreground);
+  --color-accent:                 var(--accent);
+  --color-accent-foreground:      var(--accent-foreground);
+  --color-destructive:            var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border:                 var(--border);
+  --color-input:                  var(--input);
+  --color-ring:                   var(--ring);
+  --color-success:                var(--success);
+  --color-success-foreground:     var(--success-foreground);
+  --color-bracket-bg:             var(--bracket-bg);
+  --color-bracket-card:           var(--bracket-card);
+  --color-bracket-line:           var(--bracket-line);
 
-  /* Cards */
-  --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(300 1.5% 25.5%);
-
-  /* Popovers */
-  --color-popover: hsl(0 0% 100%);
-  --color-popover-foreground: hsl(300 1.5% 25.5%);
-
-  /* Primary = Bleu IBM #1b75bc */
-  --color-primary: hsl(207 75% 42%);
-  --color-primary-foreground: hsl(0 0% 100%);
-
-  /* Secondary = bleu très clair */
-  --color-secondary: hsl(207 30% 95%);
-  --color-secondary-foreground: hsl(207 75% 35%);
-
-  /* Muted */
-  --color-muted: hsl(210 20% 96%);
-  --color-muted-foreground: hsl(300 1.5% 40%);
-
-  /* Accent = bleu léger */
-  --color-accent: hsl(207 40% 93%);
-  --color-accent-foreground: hsl(207 75% 35%);
-
-  /* Destructive */
-  --color-destructive: hsl(0 72% 51%);
-  --color-destructive-foreground: hsl(0 0% 100%);
-
-  /* Borders & inputs */
-  --color-border: hsl(207 20% 88%);
-  --color-input: hsl(207 20% 88%);
-  --color-ring: hsl(207 75% 42%);
-
-  /* Radii */
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
-
-  /* Success (qualifié) */
-  --color-success: hsl(142 71% 45%);
-  --color-success-foreground: hsl(0 0% 100%);
-
-  /* Bracket KO */
-  --color-bracket-bg: hsl(225 50% 25%);
-  --color-bracket-card: hsl(225 40% 35%);
-  --color-bracket-line: hsl(45 90% 55%);
 }
 
+/* ─── Base ──────────────────────────────────────────────────────────────── */
 @layer base {
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-border);
+    border-color: var(--border);
   }
   body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
+    background-color: var(--background);
+    color: var(--foreground);
     margin: 0;
     min-height: 100vh;
     font-family: system-ui, -apple-system, sans-serif;
   }
 }
 
-/* Bracket KO — connector lines */
+/* ─── Bracket KO — connector lines ─────────────────────────────────────── */
 .bracket-match-wrapper {
   position: relative;
 }
 
-/* Horizontal line going right from the card */
 .bracket-connector {
   position: absolute;
   right: -2.5rem;
   top: 50%;
   width: 2.5rem;
   height: 2px;
-  background-color: var(--color-bracket-line);
+  background-color: var(--bracket-line);
   pointer-events: none;
 }
 
-/* Vertical bar connecting a pair of matches ("top" match) */
 .bracket-connector[data-position="top"]::after {
   content: "";
   position: absolute;
@@ -102,10 +136,9 @@
   top: 0;
   width: 2px;
   height: var(--connector-height, 3rem);
-  background-color: var(--color-bracket-line);
+  background-color: var(--bracket-line);
 }
 
-/* "bottom" match: vertical bar going upward */
 .bracket-connector[data-position="bottom"]::after {
   content: "";
   position: absolute;
@@ -113,5 +146,5 @@
   bottom: 0;
   width: 2px;
   height: var(--connector-height, 3rem);
-  background-color: var(--color-bracket-line);
+  background-color: var(--bracket-line);
 }
