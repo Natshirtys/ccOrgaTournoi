@@ -33,6 +33,11 @@
   --bracket-bg:             hsl(225 50% 25%);
   --bracket-card:           hsl(225 40% 35%);
   --bracket-line:           hsl(45 90% 55%);
+  /* Classement sportif — pastels IBM (bleu #1b75bc = hsl 207) */
+  --classement-bg:          hsl(207 50% 93%);
+  --classement-row-odd:     hsl(207 45% 89%);
+  --classement-row-even:    hsl(207 30% 96%);
+  --classement-divider:     hsl(207 35% 81%);
 }
 
 /* ─── Variables : mode sombre ───────────────────────────────────────────── */
@@ -61,6 +66,11 @@
   --bracket-bg:             hsl(225 40% 18%);
   --bracket-card:           hsl(225 35% 26%);
   --bracket-line:           hsl(45 90% 55%);
+  /* Classement sportif */
+  --classement-bg:          hsl(220 55% 10%);
+  --classement-row-odd:     hsl(220 45% 13%);
+  --classement-row-even:    hsl(220 38% 16%);
+  --classement-divider:     hsl(220 30% 22%);
 }
 
 /* ─── Mapping Tailwind utilities ────────────────────────────────────────── */
@@ -89,6 +99,10 @@
   --color-bracket-bg:             var(--bracket-bg);
   --color-bracket-card:           var(--bracket-card);
   --color-bracket-line:           var(--bracket-line);
+  --color-classement-bg:          var(--classement-bg);
+  --color-classement-row-odd:     var(--classement-row-odd);
+  --color-classement-row-even:    var(--classement-row-even);
+  --color-classement-divider:     var(--classement-divider);
 
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
