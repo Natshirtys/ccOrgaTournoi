@@ -116,6 +116,46 @@ function FormatRulesContent({ typePhase }: { typePhase?: TypePhase }) {
     );
   }
 
+  if (typePhase === 'SYSTEME_SUISSE') {
+    return (
+      <div className="space-y-4 text-sm">
+        <section>
+          <h3 className="mb-1 font-semibold">Principe</h3>
+          <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+            <li>Tous les participants jouent le même nombre de tours</li>
+            <li>À chaque tour, les équipes ayant le même nombre de points sont appariées</li>
+            <li>Aucune équipe ne rencontre deux fois la même adversaire</li>
+            <li>Nombre de tours recommandé : log₂ du nombre d'équipes (ex. 4 tours pour 16 équipes)</li>
+          </ul>
+        </section>
+        <section>
+          <h3 className="mb-1 font-semibold">Barème de points</h3>
+          <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+            <li><span className="font-medium">Victoire</span> = 2 points</li>
+            <li><span className="font-medium">Défaite</span> = 0 point</li>
+            <li>Pas de match nul en sport-boules</li>
+          </ul>
+        </section>
+        <section>
+          <h3 className="mb-1 font-semibold">Classement final (critères par ordre)</h3>
+          <ol className="list-decimal space-y-1 pl-4 text-muted-foreground">
+            <li>Points cumulés</li>
+            <li>Différence de score (marqués − encaissés)</li>
+            <li>Points marqués total</li>
+          </ol>
+        </section>
+        <section>
+          <h3 className="mb-1 font-semibold">Appariement Aurard</h3>
+          <ul className="list-disc space-y-1 pl-4 text-muted-foreground">
+            <li>Tour 1 : tirage aléatoire</li>
+            <li>Tours suivants : 1er vs 2e, 3e vs 4e, etc. parmi les équipes de même score</li>
+            <li>Si nombre impair d'équipes à un niveau : le dernier joue contre le premier du groupe inférieur</li>
+          </ul>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <p className="text-sm text-muted-foreground">
       Aucune règle disponible pour ce format.
@@ -127,6 +167,7 @@ const FORMAT_TITLES: Partial<Record<TypePhase, string>> = {
   POULES: 'Format GSL (Poules + Finale)',
   CHAMPIONNAT: 'Format Championnat (Round Robin + KO)',
   ELIMINATION_SIMPLE: 'Élimination directe',
+  SYSTEME_SUISSE: 'Système Suisse (Aurard)',
 };
 
 // ─── Composant principal ──────────────────────────────────────────────────────

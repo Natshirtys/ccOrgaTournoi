@@ -305,7 +305,6 @@ function TablePhaseView({
                   <TableHead className="text-center">Score</TableHead>
                   <TableHead>Terrain</TableHead>
                   <TableHead>Statut</TableHead>
-                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

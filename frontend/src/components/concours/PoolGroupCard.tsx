@@ -1,12 +1,13 @@
 import { useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, Circle, MapPin } from 'lucide-react';
+import { CheckCircle2, Circle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SaisirScoreDialog } from './SaisirScoreDialog';
 import { CorrigerScoreDialog } from './CorrigerScoreDialog';
-import { demarrerMatch, assignerTerrain } from '@/api/matchs';
+import { TerrainBadge } from './TerrainBadge';
+import { demarrerMatch } from '@/api/matchs';
 import type { MatchDto, TerrainDto } from '@/types/concours';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -112,55 +113,6 @@ function computeClassement(
   });
 }
 
-function PoolTerrainBadge({
-  match,
-  concoursId,
-  terrains,
-  readOnly,
-}: {
-  match: MatchDto;
-  concoursId: string;
-  terrains: TerrainDto[];
-  readOnly?: boolean;
-}) {
-  const queryClient = useQueryClient();
-  const terrainMutation = useMutation({
-    mutationFn: (terrainId: string) => assignerTerrain(concoursId, match.id, terrainId),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['concours', concoursId, 'matchs'] }),
-  });
-
-  if (match.terrainNumero == null) return null;
-
-  const canEdit = !readOnly && (match.statut === 'PROGRAMME' || match.statut === 'EN_COURS') && terrains.length > 0;
-
-  return (
-    <div className="shrink-0 flex items-center gap-1 rounded-md bg-primary/15 px-2 py-1 text-xs font-semibold text-primary dark:bg-primary/20 dark:text-primary">
-      <MapPin className="h-3 w-3 shrink-0" />
-      {canEdit ? (
-        <select
-          className="bg-transparent text-xs font-semibold text-primary cursor-pointer border-none outline-none appearance-none -mr-1"
-          value={match.terrainId ?? ''}
-          onChange={(e) => terrainMutation.mutate(e.target.value)}
-          disabled={terrainMutation.isPending}
-        >
-          {match.terrainId && (
-            <option value={match.terrainId}>T{match.terrainNumero}</option>
-          )}
-          {terrains
-            .filter((t) => t.id !== match.terrainId)
-            .map((t) => (
-              <option key={t.id} value={t.id} disabled={!t.disponible}>
-                T{t.numero}{!t.disponible ? ' (en cours)' : ''}
-              </option>
-            ))}
-        </select>
-      ) : (
-        <span>T{match.terrainNumero}</span>
-      )}
-    </div>
-  );
-}
 
 function PoolMatchActions({
   match,
@@ -442,7 +394,7 @@ export function PoolGroupCard({
                       </div>
 
                       {/* Terrain */}
-                      <PoolTerrainBadge
+                      <TerrainBadge
                         match={m}
                         concoursId={concoursId}
                         terrains={terrains}
