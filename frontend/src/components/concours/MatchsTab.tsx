@@ -296,6 +296,7 @@ function TablePhaseView({
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -321,6 +322,7 @@ function TablePhaseView({
                 ))}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       ))}

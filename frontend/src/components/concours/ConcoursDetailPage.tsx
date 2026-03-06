@@ -59,18 +59,20 @@ export function ConcoursDetailPage({ concoursId, onBack }: ConcoursDetailPagePro
       <ConcoursInfoCard concours={concours} />
 
       <Tabs defaultValue={getDefaultTab(concours.statut, hasSystemeSuisse)}>
-        <TabsList>
-          <TabsTrigger value="inscriptions">Inscriptions</TabsTrigger>
-          <TabsTrigger value="terrains">Terrains</TabsTrigger>
-          <TabsTrigger value="matchs" disabled={!matchsEnabled}>
-            Matchs
-          </TabsTrigger>
-          {hasSystemeSuisse && (
-            <TabsTrigger value="classement" disabled={!hasPhases}>
-              Classement
+        <div className="overflow-x-auto">
+          <TabsList className="w-max">
+            <TabsTrigger value="inscriptions">Inscriptions</TabsTrigger>
+            <TabsTrigger value="terrains">Terrains</TabsTrigger>
+            <TabsTrigger value="matchs" disabled={!matchsEnabled}>
+              Matchs
             </TabsTrigger>
-          )}
-        </TabsList>
+            {hasSystemeSuisse && (
+              <TabsTrigger value="classement" disabled={!hasPhases}>
+                Classement
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </div>
         <TabsContent value="inscriptions">
           <InscriptionsTab concours={concours} readOnly={readOnly} />
         </TabsContent>

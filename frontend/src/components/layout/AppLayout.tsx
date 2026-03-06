@@ -38,14 +38,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </div>
 
           {isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-primary-foreground/80">{user?.email}</span>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <span className="hidden sm:inline text-xs text-primary-foreground/80">{user?.email}</span>
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={logout}
               >
-                Déconnexion
+                <span className="hidden sm:inline">Déconnexion</span>
+                <span className="sm:hidden">✕</span>
               </Button>
             </div>
           ) : (
@@ -54,7 +55,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
               size="sm"
               onClick={() => setLoginOpen(true)}
             >
-              Connexion admin
+              <span className="hidden sm:inline">Connexion admin</span>
+              <span className="sm:hidden">Admin</span>
             </Button>
           )}
 

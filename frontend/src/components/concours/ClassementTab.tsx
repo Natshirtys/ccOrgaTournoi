@@ -12,16 +12,18 @@ interface ClassementTabProps {
 }
 
 const MEDALS = ['🥇', '🥈', '🥉'];
-const COLS = 'grid-cols-[3.5rem_1fr_5rem_5rem_5rem_5rem_6rem_5.5rem]';
+// Mobile : #, Équipe, V, D, Pts — Desktop : + Pm, Pe, Diff
+const COLS = 'grid-cols-[2rem_1fr_3rem_3rem_3.5rem] sm:grid-cols-[3.5rem_1fr_5rem_5rem_5rem_5rem_6rem_5.5rem]';
 
 // ─── En-tête colonne ─────────────────────────────────────────────────────────
 
-function HeaderCell({ children, first = false }: { children: React.ReactNode; first?: boolean }) {
+function HeaderCell({ children, first = false, className }: { children: React.ReactNode; first?: boolean; className?: string }) {
   return (
     <span
       className={cn(
         'text-center text-[11px] font-bold uppercase tracking-widest text-muted-foreground',
         !first && 'border-l border-classement-divider py-1',
+        className,
       )}
     >
       {children}
@@ -85,19 +87,19 @@ function ClassementRow({
       </span>
 
       {/* Pm */}
-      <span className="text-center text-base tabular-nums text-foreground/80">
+      <span className="hidden sm:block text-center text-base tabular-nums text-foreground/80">
         {ligne.pointsMarques}
       </span>
 
       {/* Pe */}
-      <span className="text-center text-base tabular-nums text-muted-foreground">
+      <span className="hidden sm:block text-center text-base tabular-nums text-muted-foreground">
         {ligne.pointsEncaisses}
       </span>
 
       {/* Diff */}
       <span
         className={cn(
-          'text-center text-base font-bold tabular-nums',
+          'hidden sm:block text-center text-base font-bold tabular-nums',
           diff > 0
             ? 'text-emerald-600 dark:text-emerald-400'
             : diff < 0
@@ -181,9 +183,9 @@ export function ClassementTab({ concours }: ClassementTabProps) {
           <HeaderCell first>Équipe</HeaderCell>
           <HeaderCell>V</HeaderCell>
           <HeaderCell>D</HeaderCell>
-          <HeaderCell>Pm</HeaderCell>
-          <HeaderCell>Pe</HeaderCell>
-          <HeaderCell>Diff</HeaderCell>
+          <HeaderCell className="hidden sm:inline">Pm</HeaderCell>
+          <HeaderCell className="hidden sm:inline">Pe</HeaderCell>
+          <HeaderCell className="hidden sm:inline">Diff</HeaderCell>
           <HeaderCell>Pts</HeaderCell>
         </div>
 
