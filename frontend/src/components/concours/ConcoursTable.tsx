@@ -22,6 +22,13 @@ const TYPE_LABELS: Record<string, string> = {
   QUADRETTE: 'Quadrette',
 };
 
+const FORMAT_LABELS: Record<string, string> = {
+  POULES: 'Poule classique',
+  CHAMPIONNAT: 'Round Robin',
+  ELIMINATION_SIMPLE: 'Élim. directe + complémentaire',
+  SYSTEME_SUISSE: 'Système Suisse (Aurard)',
+};
+
 const STATUT_BORDER: Record<string, string> = {
   BROUILLON: 'border-l-border',
   INSCRIPTIONS_OUVERTES: 'border-l-success',
@@ -95,6 +102,9 @@ export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours
               </span>
               <span className="font-medium text-foreground/70">
                 {TYPE_LABELS[c.formule.typeEquipe] ?? c.formule.typeEquipe}
+                {c.formule.typePhase && (
+                  <> · {FORMAT_LABELS[c.formule.typePhase] ?? c.formule.typePhase}</>
+                )}
               </span>
             </div>
           </div>

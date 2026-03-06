@@ -171,6 +171,13 @@ const FORMAT_TITLES: Partial<Record<TypePhase, string>> = {
   SYSTEME_SUISSE: 'Système Suisse (Aurard)',
 };
 
+const FORMAT_SHORT: Partial<Record<TypePhase, string>> = {
+  POULES: 'Poule classique',
+  CHAMPIONNAT: 'Round Robin',
+  ELIMINATION_SIMPLE: 'Élim. directe + complémentaire',
+  SYSTEME_SUISSE: 'Système Suisse (Aurard)',
+};
+
 // ─── Composant principal ──────────────────────────────────────────────────────
 
 interface ConcoursInfoCardProps {
@@ -264,6 +271,14 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
               {TYPE_LABELS[concours.formule.typeEquipe] ?? concours.formule.typeEquipe}
             </p>
           </div>
+          {typePhase && (
+            <div>
+              <p className="text-muted-foreground">Format</p>
+              <p className="font-medium">
+                {FORMAT_SHORT[typePhase] ?? typePhase}
+              </p>
+            </div>
+          )}
           <div>
             <p className="text-muted-foreground">Équipes / Terrains</p>
             <p className="font-medium">
