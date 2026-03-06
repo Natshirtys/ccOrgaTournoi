@@ -46,10 +46,10 @@ function formatDates(debut: string, fin: string) {
 
 interface ConcoursTableProps {
   concours: ConcoursSummary[];
-  onOuvrirInscriptions: (id: string) => void;
+  onOuvrirInscriptions?: (id: string) => void;
   onSelectConcours: (id: string) => void;
-  onArchiver: (id: string) => void;
-  onSupprimer: (id: string) => void;
+  onArchiver?: (id: string) => void;
+  onSupprimer?: (id: string) => void;
 }
 
 export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours, onArchiver, onSupprimer }: ConcoursTableProps) {
@@ -110,12 +110,12 @@ export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours
 
           {/* Actions */}
           <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
-            {c.statut === 'BROUILLON' && (
+            {c.statut === 'BROUILLON' && onOuvrirInscriptions && (
               <Button size="sm" variant="outline" onClick={() => onOuvrirInscriptions(c.id)}>
                 Ouvrir inscriptions
               </Button>
             )}
-            {c.statut === 'TERMINE' && (
+            {c.statut === 'TERMINE' && onArchiver && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button size="sm" variant="outline">Archiver</Button>
@@ -134,7 +134,7 @@ export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            {STATUTS_SUPPRESSIBLES.includes(c.statut) && (
+            {STATUTS_SUPPRESSIBLES.includes(c.statut) && onSupprimer && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive">

@@ -5,6 +5,7 @@ import { ConcoursTable } from '@/components/concours/ConcoursTable';
 import { ArchivesTab } from '@/components/concours/ArchivesTab';
 import { CreateConcoursDialog } from '@/components/concours/CreateConcoursDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/auth/AuthContext';
 import type { CreateConcoursPayload } from '@/types/concours';
 
 interface ConcoursListPageProps {
@@ -12,6 +13,7 @@ interface ConcoursListPageProps {
 }
 
 export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
+  const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
@@ -75,10 +77,12 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
             </p>
           </div>
         </div>
-        <CreateConcoursDialog
-          onSubmit={(payload) => createMutation.mutate(payload)}
-          isPending={createMutation.isPending}
-        />
+        {isAuthenticated && (
+          <CreateConcoursDialog
+            onSubmit={(payload) => createMutation.mutate(payload)}
+            isPending={createMutation.isPending}
+          />
+        )}
       </div>
 
       {/* Tabs */}
@@ -105,17 +109,17 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
         <TabsContent value="actifs" className="mt-4">
           <ConcoursTable
             concours={actifs}
-            onOuvrirInscriptions={(id) => ouvrirMutation.mutate(id)}
+            onOuvrirInscriptions={isAuthenticated ? (id) => ouvrirMutation.mutate(id) : undefined}
             onSelectConcours={onSelectConcours}
-            onArchiver={(id) => archiverMutation.mutate(id)}
-            onSupprimer={(id) => supprimerMutation.mutate(id)}
+            onArchiver={isAuthenticated ? (id) => archiverMutation.mutate(id) : undefined}
+            onSupprimer={isAuthenticated ? (id) => supprimerMutation.mutate(id) : undefined}
           />
         </TabsContent>
 
         <TabsContent value="archives" className="mt-4">
           <ArchivesTab
             archives={archives}
-            onSupprimer={(id) => supprimerMutation.mutate(id)}
+            onSupprimer={isAuthenticated ? (id) => supprimerMutation.mutate(id) : undefined}
             onSelectConcours={onSelectConcours}
           />
         </TabsContent>

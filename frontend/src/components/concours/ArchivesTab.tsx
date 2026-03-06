@@ -36,7 +36,7 @@ function formatDates(debut: string, fin: string) {
 
 interface ArchivesTabProps {
   archives: ConcoursSummary[];
-  onSupprimer: (id: string) => void;
+  onSupprimer?: (id: string) => void;
   onSelectConcours?: (id: string) => void;
 }
 
@@ -124,30 +124,32 @@ export function ArchivesTab({ archives, onSupprimer, onSelectConcours }: Archive
             >
               {loadingId === c.id ? 'Génération…' : 'Exporter PDF'}
             </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive">
-                  Supprimer
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Supprimer définitivement ?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Le concours archivé « {c.nom} » sera supprimé définitivement. Cette action est irréversible.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    onClick={() => onSupprimer(c.id)}
-                  >
-                    Supprimer définitivement
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {onSupprimer && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive">
+                    Supprimer
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Supprimer définitivement ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Le concours archivé « {c.nom} » sera supprimé définitivement. Cette action est irréversible.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => onSupprimer(c.id)}
+                    >
+                      Supprimer définitivement
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
       ))}

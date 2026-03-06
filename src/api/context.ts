@@ -1,6 +1,7 @@
 import { ConcoursRepository } from '../domain/concours/ports/concours-repository.js';
 import { ClubRepository, JoueurRepository } from '../domain/club/ports/club-repository.js';
 import { EventPublisher } from '../domain/concours/ports/event-publisher.js';
+import { AuthService } from './auth/auth-service.js';
 
 /**
  * Contexte applicatif injecté dans les routes.
@@ -11,4 +12,5 @@ export interface AppContext {
   clubRepository: ClubRepository;
   joueurRepository: JoueurRepository;
   eventPublisher: EventPublisher;
+  authService?: AuthService;
 }

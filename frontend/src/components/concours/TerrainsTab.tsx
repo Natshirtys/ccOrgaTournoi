@@ -11,6 +11,7 @@ import type { ConcoursDetail } from '@/types/concours';
 
 interface TerrainsTabProps {
   concours: ConcoursDetail;
+  readOnly?: boolean;
 }
 
 export function TerrainsTab({ concours }: TerrainsTabProps) {

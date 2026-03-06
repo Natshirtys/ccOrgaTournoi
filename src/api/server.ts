@@ -3,6 +3,8 @@ import cors from 'cors';
 import { errorHandler } from './middleware/error-handler.js';
 import { createConcoursRouter } from './routes/concours.js';
 import { createMatchsRouter } from './routes/matchs.js';
+import { createAuthRouter } from './routes/auth.js';
+import { createAuthenticateMiddleware } from './auth/auth-middleware.js';
 import { AppContext } from './context.js';
 
 export function createApp(context: AppContext): express.Express {
@@ -12,10 +14,18 @@ export function createApp(context: AppContext): express.Express {
   app.use(cors());
   app.use(express.json());
 
+  // Parse JWT silencieusement (no-op si authService absent)
+  app.use(createAuthenticateMiddleware(context.authService ?? null));
+
   // Health check
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
+
+  // Routes auth (seulement si authService disponible)
+  if (context.authService) {
+    app.use('/api/v1/auth', createAuthRouter(context.authService));
+  }
 
   // Routes
   app.use('/api/v1/concours', createConcoursRouter(context));

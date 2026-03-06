@@ -4,6 +4,7 @@ import { InMemoryClubRepository } from '../infrastructure/repositories/in-memory
 import { InMemoryJoueurRepository } from '../infrastructure/repositories/in-memory-joueur-repository.js';
 import { InMemoryEventBus } from '../infrastructure/events/in-memory-event-bus.js';
 import { AppContext } from './context.js';
+import { AuthService } from './auth/auth-service.js';
 
 /**
  * Construit le contexte applicatif.
@@ -22,11 +23,26 @@ export async function buildContext(): Promise<AppContext> {
     console.log('💾 Persistance : InMemory (pas de DATABASE_URL)');
   }
 
+  let authService: AuthService | undefined;
+  const { JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD } = process.env;
+  if (JWT_SECRET && ADMIN_EMAIL && ADMIN_PASSWORD) {
+    authService = new AuthService({
+      jwtSecret: JWT_SECRET,
+      adminEmail: ADMIN_EMAIL,
+      adminPassword: ADMIN_PASSWORD,
+      tokenExpiresIn: process.env.TOKEN_EXPIRES_IN ?? '8h',
+    });
+    console.log('🔐 Authentification : activée');
+  } else {
+    console.log('🔓 Authentification : désactivée (JWT_SECRET/ADMIN_EMAIL/ADMIN_PASSWORD manquants)');
+  }
+
   return {
     concoursRepository,
     clubRepository: new InMemoryClubRepository(),
     joueurRepository: new InMemoryJoueurRepository(),
     eventPublisher: new InMemoryEventBus(),
+    authService,
   };
 }
 

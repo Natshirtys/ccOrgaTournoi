@@ -5,10 +5,11 @@ import type { ConcoursDetail } from '@/types/concours';
 
 interface InscriptionsTabProps {
   concours: ConcoursDetail;
+  readOnly?: boolean;
 }
 
-export function InscriptionsTab({ concours }: InscriptionsTabProps) {
-  const canInscrire = concours.statut === 'INSCRIPTIONS_OUVERTES';
+export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabProps) {
+  const canInscrire = !readOnly && concours.statut === 'INSCRIPTIONS_OUVERTES';
   const inscriptions = concours.inscriptions;
 
   return (

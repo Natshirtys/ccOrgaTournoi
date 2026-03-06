@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AppContext } from '../context.js';
 import { validateBody } from '../middleware/validation.js';
 import { ApiError } from '../middleware/error-handler.js';
+import { createRequireAdmin } from '../auth/auth-middleware.js';
 import { Concours } from '../../domain/concours/entities/concours.js';
 import { Equipe } from '../../domain/concours/entities/equipe.js';
 import { Inscription } from '../../domain/concours/entities/inscription.js';
@@ -27,7 +28,7 @@ const creerConcoursSchema = z.object({
   dateDebut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format YYYY-MM-DD'),
   dateFin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format YYYY-MM-DD').optional(),
   lieu: z.string().default(''),
-  organisateurId: z.string().min(1),
+  organisateurId: z.string().min(1).optional(),
   typeEquipe: z.nativeEnum(TypeEquipe),
   nbEquipesMin: z.number().int().min(2).default(4),
   nbEquipesMax: z.number().int().min(2).default(32),
@@ -96,6 +97,7 @@ function concoursToJson(c: Concours) {
 
 export function createConcoursRouter(ctx: AppContext): Router {
   const router = Router();
+  const protect = createRequireAdmin(ctx.authService);
 
   // GET / — Lister les concours
   router.get('/', asyncHandler(async (_req, res) => {
@@ -129,7 +131,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
   }));
 
   // POST / — Créer un concours
-  router.post('/', validateBody(creerConcoursSchema), asyncHandler(async (req, res) => {
+  router.post('/', protect, validateBody(creerConcoursSchema), asyncHandler(async (req, res) => {
     const data = req.body;
     const id = ctx.concoursRepository.nextId();
 
@@ -149,7 +151,8 @@ export function createConcoursRouter(ctx: AppContext): Router {
     );
     const reglement = new ReglementConcours(data.reglement);
 
-    const concours = new Concours(id, data.nom, dates, data.lieu, data.organisateurId, formule, reglement);
+    const organisateurId = data.organisateurId ?? req.user?.email ?? 'anonymous';
+    const concours = new Concours(id, data.nom, dates, data.lieu, organisateurId, formule, reglement);
 
     // Auto-générer les terrains
     for (let i = 0; i < data.nbTerrains; i++) {
@@ -163,7 +166,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
   }));
 
   // POST /:id/ouvrir-inscriptions
-  router.post('/:id/ouvrir-inscriptions', asyncHandler(async (req, res) => {
+  router.post('/:id/ouvrir-inscriptions', protect, asyncHandler(async (req, res) => {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));
     if (!concours) throw ApiError.notFound('Concours non trouvé');
 
@@ -174,7 +177,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
   }));
 
   // POST /:id/cloturer-inscriptions
-  router.post('/:id/cloturer-inscriptions', asyncHandler(async (req, res) => {
+  router.post('/:id/cloturer-inscriptions', protect, asyncHandler(async (req, res) => {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));
     if (!concours) throw ApiError.notFound('Concours non trouvé');
 
@@ -185,7 +188,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
   }));
 
   // POST /:id/terrains — Ajouter un terrain
-  router.post('/:id/terrains', validateBody(ajouterTerrainSchema), asyncHandler(async (req, res) => {
+  router.post('/:id/terrains', protect, validateBody(ajouterTerrainSchema), asyncHandler(async (req, res) => {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));
     if (!concours) throw ApiError.notFound('Concours non trouvé');
 
@@ -198,7 +201,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
   }));
 
   // POST /:id/inscriptions — Inscrire une équipe
-  router.post('/:id/inscriptions', validateBody(inscrireEquipeSchema), asyncHandler(async (req, res) => {
+  router.post('/:id/inscriptions', protect, validateBody(inscrireEquipeSchema), asyncHandler(async (req, res) => {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));
     if (!concours) throw ApiError.notFound('Concours non trouvé');
 
@@ -221,7 +224,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
   }));
 
   // POST /:id/terminer — Terminer manuellement un concours EN_COURS
-  router.post('/:id/terminer', asyncHandler(async (req, res) => {
+  router.post('/:id/terminer', protect, asyncHandler(async (req, res) => {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));
     if (!concours) throw ApiError.notFound('Concours non trouvé');
 
@@ -232,7 +235,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
   }));
 
   // DELETE /:id — Supprimer un concours (interdit si EN_COURS ou ARCHIVE)
-  router.delete('/:id', asyncHandler(async (req, res) => {
+  router.delete('/:id', protect, asyncHandler(async (req, res) => {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));
     if (!concours) throw ApiError.notFound('Concours non trouvé');
 
@@ -245,7 +248,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
   }));
 
   // POST /:id/archiver — Archiver un concours TERMINE
-  router.post('/:id/archiver', asyncHandler(async (req, res) => {
+  router.post('/:id/archiver', protect, asyncHandler(async (req, res) => {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));
     if (!concours) throw ApiError.notFound('Concours non trouvé');
 
@@ -256,7 +259,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
   }));
 
   // POST /:id/tirage — Lancer le tirage et générer la phase
-  router.post('/:id/tirage', validateBody(lancerTirageSchema), asyncHandler(async (req, res) => {
+  router.post('/:id/tirage', protect, validateBody(lancerTirageSchema), asyncHandler(async (req, res) => {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));
     if (!concours) throw ApiError.notFound('Concours non trouvé');
 

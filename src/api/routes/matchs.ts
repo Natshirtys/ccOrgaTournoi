@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AppContext } from '../context.js';
 import { validateBody } from '../middleware/validation.js';
 import { ApiError } from '../middleware/error-handler.js';
+import { createRequireAdmin } from '../auth/auth-middleware.js';
 import { Score, ResultatMatch, GoalAverage, PhaseDefinition } from '../../domain/shared/value-objects.js';
 import { TypeResultat, CritereClassement, TypePhase, StatutPhase } from '../../domain/shared/enums.js';
 import { Match } from '../../domain/concours/entities/match.js';
@@ -46,6 +47,7 @@ function param(value: string | string[] | undefined): string {
 
 export function createMatchsRouter(ctx: AppContext): Router {
   const router = Router();
+  const protect = createRequireAdmin(ctx.authService);
 
   // GET /:id/matchs — Lister les matchs d'un concours
   router.get('/:id/matchs', asyncHandler(async (req, res) => {
@@ -88,7 +90,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
   }));
 
   // POST /:id/matchs/:matchId/demarrer — Démarrer un match
-  router.post('/:id/matchs/:matchId/demarrer', asyncHandler(async (req, res) => {
+  router.post('/:id/matchs/:matchId/demarrer', protect, asyncHandler(async (req, res) => {
     const { concours, match } = await findMatch(ctx, param(req.params.id), param(req.params.matchId));
 
     match.demarrer();
@@ -98,7 +100,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
   }));
 
   // POST /:id/matchs/:matchId/score — Saisir le score et valider
-  router.post('/:id/matchs/:matchId/score', validateBody(saisirScoreSchema), asyncHandler(async (req, res) => {
+  router.post('/:id/matchs/:matchId/score', protect, validateBody(saisirScoreSchema), asyncHandler(async (req, res) => {
     const { concours, phase, tour, match } = await findMatchWithContext(ctx, param(req.params.id), param(req.params.matchId));
     const { scoreEquipeA, scoreEquipeB } = req.body;
 
@@ -146,7 +148,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
   }));
 
   // POST /:id/matchs/:matchId/forfait — Déclarer forfait
-  router.post('/:id/matchs/:matchId/forfait', validateBody(declarerForfaitSchema), asyncHandler(async (req, res) => {
+  router.post('/:id/matchs/:matchId/forfait', protect, validateBody(declarerForfaitSchema), asyncHandler(async (req, res) => {
     const { concours, phase, tour, match } = await findMatchWithContext(ctx, param(req.params.id), param(req.params.matchId));
 
     match.declarerForfait(req.body.equipeDeclarantForfaitId);
@@ -172,7 +174,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
   }));
 
   // POST /:id/matchs/:matchId/terrain — Réassigner un terrain manuellement
-  router.post('/:id/matchs/:matchId/terrain', validateBody(z.object({ terrainId: z.string().min(1) })), asyncHandler(async (req, res) => {
+  router.post('/:id/matchs/:matchId/terrain', protect, validateBody(z.object({ terrainId: z.string().min(1) })), asyncHandler(async (req, res) => {
     const { concours, match } = await findMatch(ctx, param(req.params.id), param(req.params.matchId));
     const { terrainId } = req.body;
 
@@ -226,7 +228,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
   }));
 
   // POST /:id/matchs/:matchId/corriger-score — Corriger le score d'un match terminé
-  router.post('/:id/matchs/:matchId/corriger-score', validateBody(saisirScoreSchema), asyncHandler(async (req, res) => {
+  router.post('/:id/matchs/:matchId/corriger-score', protect, validateBody(saisirScoreSchema), asyncHandler(async (req, res) => {
     const { concours, phase, tour, match } = await findMatchWithContext(ctx, param(req.params.id), param(req.params.matchId));
     const { scoreEquipeA, scoreEquipeB } = req.body;
 
@@ -269,7 +271,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
   }));
 
   // POST /:id/generer-tour-suivant — Générer le tour / phase suivant(e)
-  router.post('/:id/generer-tour-suivant', asyncHandler(async (req, res) => {
+  router.post('/:id/generer-tour-suivant', protect, asyncHandler(async (req, res) => {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));
     if (!concours) throw ApiError.notFound('Concours non trouvé');
 

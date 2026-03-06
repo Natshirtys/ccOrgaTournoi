@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ConcoursListPage } from '@/pages/ConcoursListPage';
 import { ConcoursDetailPage } from '@/components/concours/ConcoursDetailPage';
+import { AuthProvider } from '@/auth/AuthContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,16 +19,18 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppLayout>
-        {selectedConcoursId ? (
-          <ConcoursDetailPage
-            concoursId={selectedConcoursId}
-            onBack={() => setSelectedConcoursId(null)}
-          />
-        ) : (
-          <ConcoursListPage onSelectConcours={setSelectedConcoursId} />
-        )}
-      </AppLayout>
+      <AuthProvider>
+        <AppLayout>
+          {selectedConcoursId ? (
+            <ConcoursDetailPage
+              concoursId={selectedConcoursId}
+              onBack={() => setSelectedConcoursId(null)}
+            />
+          ) : (
+            <ConcoursListPage onSelectConcours={setSelectedConcoursId} />
+          )}
+        </AppLayout>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

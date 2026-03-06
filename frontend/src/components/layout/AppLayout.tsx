@@ -1,7 +1,24 @@
-import type { ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { ModeToggle } from '@/components/mode-toggle';
+import { LoginDialog } from '@/components/auth/LoginDialog';
+import { useAuth } from '@/auth/AuthContext';
+import { Button } from '@/components/ui/button';
 
 export function AppLayout({ children }: { children: ReactNode }) {
+  const { isAuthenticated, user, logout } = useAuth();
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  // Ouvrir automatiquement la dialog si la session expire
+  useEffect(() => {
+    const handler = () => {
+      setSessionExpired(true);
+      setLoginOpen(true);
+    };
+    window.addEventListener('auth:expired', handler);
+    return () => window.removeEventListener('auth:expired', handler);
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-primary text-primary-foreground shadow-md">
@@ -19,12 +36,40 @@ export function AppLayout({ children }: { children: ReactNode }) {
               Indépendante Boule Magnet
             </p>
           </div>
+
+          {isAuthenticated ? (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-primary-foreground/80">{user?.email}</span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={logout}
+              >
+                Déconnexion
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setLoginOpen(true)}
+            >
+              Connexion admin
+            </Button>
+          )}
+
           <ModeToggle />
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {children}
       </main>
+
+      <LoginDialog
+        open={loginOpen}
+        onOpenChange={(open) => { setLoginOpen(open); if (!open) setSessionExpired(false); }}
+        sessionExpired={sessionExpired}
+      />
     </div>
   );
 }

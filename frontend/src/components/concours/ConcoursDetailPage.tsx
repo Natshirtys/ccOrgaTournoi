@@ -7,6 +7,7 @@ import { InscriptionsTab } from './InscriptionsTab';
 import { TerrainsTab } from './TerrainsTab';
 import { MatchsTab } from './MatchsTab';
 import { ClassementTab } from './ClassementTab';
+import { useAuth } from '@/auth/AuthContext';
 import type { StatutConcours } from '@/types/concours';
 
 function getDefaultTab(statut: StatutConcours, hasSystemeSuisse: boolean): string {
@@ -21,6 +22,7 @@ interface ConcoursDetailPageProps {
 }
 
 export function ConcoursDetailPage({ concoursId, onBack }: ConcoursDetailPageProps) {
+  const { isAuthenticated } = useAuth();
   const { data: concours, isLoading, error } = useQuery({
     queryKey: ['concours', concoursId],
     queryFn: () => fetchConcoursDetail(concoursId),
@@ -46,7 +48,7 @@ export function ConcoursDetailPage({ concoursId, onBack }: ConcoursDetailPagePro
   const hasPhases = concours.phases.length > 0;
   const hasSystemeSuisse = concours.phases.some((p) => p.type === 'SYSTEME_SUISSE');
   const matchsEnabled = concours.statut === 'EN_COURS' || concours.statut === 'TERMINE' || concours.statut === 'ARCHIVE';
-  const readOnly = concours.statut === 'ARCHIVE';
+  const readOnly = !isAuthenticated || concours.statut === 'ARCHIVE';
 
   return (
     <div className="space-y-6">
@@ -70,10 +72,10 @@ export function ConcoursDetailPage({ concoursId, onBack }: ConcoursDetailPagePro
           )}
         </TabsList>
         <TabsContent value="inscriptions">
-          <InscriptionsTab concours={concours} />
+          <InscriptionsTab concours={concours} readOnly={readOnly} />
         </TabsContent>
         <TabsContent value="terrains">
-          <TerrainsTab concours={concours} />
+          <TerrainsTab concours={concours} readOnly={readOnly} />
         </TabsContent>
         <TabsContent value="matchs">
           <MatchsTab concours={concours} readOnly={readOnly} />

@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/auth/AuthContext';
 import { Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -177,6 +178,7 @@ interface ConcoursInfoCardProps {
 }
 
 export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
+  const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['concours'] });
@@ -270,7 +272,7 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
           </div>
         </div>
         <div className="mt-4 flex gap-2">
-          {statut === 'BROUILLON' && (
+          {isAuthenticated && statut === 'BROUILLON' && (
             <Button
               size="sm"
               onClick={() => ouvrirMutation.mutate()}
@@ -279,7 +281,7 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
               Ouvrir inscriptions
             </Button>
           )}
-          {statut === 'INSCRIPTIONS_OUVERTES' && (
+          {isAuthenticated && statut === 'INSCRIPTIONS_OUVERTES' && (
             <Button
               size="sm"
               onClick={() => cloturerMutation.mutate()}
@@ -288,7 +290,7 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
               Clôturer inscriptions
             </Button>
           )}
-          {statut === 'INSCRIPTIONS_CLOSES' && (
+          {isAuthenticated && statut === 'INSCRIPTIONS_CLOSES' && (
             <Button
               size="sm"
               onClick={() => tirageMutation.mutate()}
@@ -297,7 +299,7 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
               Lancer tirage
             </Button>
           )}
-          {statut === 'EN_COURS' && (
+          {isAuthenticated && statut === 'EN_COURS' && (
             <>
               <Button
                 size="sm"
