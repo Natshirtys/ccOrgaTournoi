@@ -1,4 +1,4 @@
-import type { Express } from 'express';
+import type { Express, Request, Response } from 'express';
 import { buildContext } from './bootstrap.js';
 import { createApp } from './server.js';
 
@@ -11,7 +11,7 @@ import { createApp } from './server.js';
  */
 let appPromise: Promise<Express> | null = null;
 
-export default async function handler(req: any, res: any): Promise<void> {
+export default async function handler(req: Request, res: Response): Promise<void> {
   if (!appPromise) {
     appPromise = buildContext().then(ctx => createApp(ctx));
   }

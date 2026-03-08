@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL ?? '/api/v1';
+export const BASE_URL = import.meta.env.VITE_API_URL ?? '/api/v1';
 
 export class ApiError extends Error {
   constructor(
@@ -10,7 +10,8 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = localStorage.getItem('cc-orga-token');
+  const { TOKEN_KEY } = await import('./auth');
+  const token = localStorage.getItem(TOKEN_KEY);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options?.headers as Record<string, string>),
@@ -20,7 +21,7 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
 
   if (res.status === 401) {
-    localStorage.removeItem('cc-orga-token');
+    // Délègue tout le cleanup à AuthContext via l'événement
     window.dispatchEvent(new CustomEvent('auth:expired'));
     const body = await res.json().catch(() => ({ message: 'Session expirée' }));
     throw new ApiError(res.status, body.message ?? body.error ?? 'Session expirée');

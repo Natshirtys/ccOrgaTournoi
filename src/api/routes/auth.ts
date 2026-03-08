@@ -35,6 +35,8 @@ export function createAuthRouter(authService: AuthService): Router {
   });
 
   // GET /api/v1/auth/me
+  // Note : ce router n'est monté dans server.ts que si authService est défini.
+  // requireAdmin est donc toujours approprié ici — pas de no-op fallback nécessaire.
   router.get('/me', requireAdmin, (req, res) => {
     res.json({ user: req.user });
   });

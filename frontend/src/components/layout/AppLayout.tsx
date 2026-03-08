@@ -44,9 +44,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 variant="secondary"
                 size="sm"
                 onClick={logout}
+                aria-label="Déconnexion"
               >
                 <span className="hidden sm:inline">Déconnexion</span>
-                <span className="sm:hidden">✕</span>
+                <span aria-hidden="true" className="sm:hidden">✕</span>
               </Button>
             </div>
           ) : (

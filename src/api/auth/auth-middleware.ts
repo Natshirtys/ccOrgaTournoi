@@ -29,8 +29,12 @@ export function createAuthenticateMiddleware(authService: AuthService | null) {
  * À utiliser APRÈS createAuthenticateMiddleware sur les routes mutantes.
  */
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
-  if (!req.user || req.user.role !== 'admin') {
+  if (!req.user) {
     res.status(401).json({ error: 'Non autorisé — authentification requise' });
+    return;
+  }
+  if (req.user.role !== 'admin') {
+    res.status(403).json({ error: 'Accès refusé — droits administrateur requis' });
     return;
   }
   next();
@@ -40,7 +44,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
  * Retourne requireAdmin si authService est actif, sinon un middleware no-op.
  * Permet la rétrocompatibilité des tests sans JWT_SECRET.
  */
-export function createRequireAdmin(authService: { verifyToken: (t: string) => unknown } | null | undefined) {
+export function createRequireAdmin(authService: AuthService | null | undefined) {
   if (!authService) {
     return (_req: Request, _res: Response, next: NextFunction) => next();
   }

@@ -11,8 +11,12 @@ export function createApp(context: AppContext): express.Express {
   const app = express();
 
   // Middleware globaux
-  app.use(cors());
-  app.use(express.json());
+  app.set('trust proxy', 1); // Nécessaire pour le rate limiting derrière Vercel/reverse proxy
+  app.use(cors({
+    origin: process.env.ALLOWED_ORIGIN ?? true, // true = mirror Origin en dev, restreindre via ALLOWED_ORIGIN en prod
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  }));
+  app.use(express.json({ limit: '10kb' }));
 
   // Parse JWT silencieusement (no-op si authService absent)
   app.use(createAuthenticateMiddleware(context.authService ?? null));

@@ -19,7 +19,7 @@ async function request(
   body?: unknown,
   token?: string,
 ) {
-  return new Promise<{ status: number; body: Record<string, unknown> }>((resolve) => {
+  return new Promise<{ status: number; body: Record<string, unknown> }>((resolve, reject) => {
     const server = app.listen(0, () => {
       const addr = server.address();
       const port = typeof addr === 'object' && addr ? addr.port : 0;
@@ -42,7 +42,7 @@ async function request(
         })
         .catch((err) => {
           server.close();
-          throw err;
+          reject(err);
         });
     });
   });

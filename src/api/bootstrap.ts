@@ -34,6 +34,9 @@ export async function buildContext(): Promise<AppContext> {
     });
     console.log('🔐 Authentification : activée');
   } else {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: JWT_SECRET, ADMIN_EMAIL et ADMIN_PASSWORD sont requis en production');
+    }
     console.log('🔓 Authentification : désactivée (JWT_SECRET/ADMIN_EMAIL/ADMIN_PASSWORD manquants)');
   }
 
@@ -50,11 +53,16 @@ export async function buildContext(): Promise<AppContext> {
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-buildContext().then(context => {
-  const app = createApp(context);
-  app.listen(PORT, () => {
-    console.log(`🎳 ccOrgaTournoi API démarrée sur http://localhost:${PORT}`);
-    console.log(`   Health check: http://localhost:${PORT}/api/health`);
-    console.log(`   API base:     http://localhost:${PORT}/api/v1/concours`);
+buildContext()
+  .then(context => {
+    const app = createApp(context);
+    app.listen(PORT, () => {
+      console.log(`🎳 ccOrgaTournoi API démarrée sur http://localhost:${PORT}`);
+      console.log(`   Health check: http://localhost:${PORT}/api/health`);
+      console.log(`   API base:     http://localhost:${PORT}/api/v1/concours`);
+    });
+  })
+  .catch(err => {
+    console.error('Echec du démarrage du serveur:', err);
+    process.exit(1);
   });
-});
