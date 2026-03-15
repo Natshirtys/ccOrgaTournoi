@@ -22,7 +22,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-primary text-primary-foreground shadow-md">
-        <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <img
             src="/ibm-logo-blanc.png"
             alt="IBM"
@@ -64,7 +64,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <ModeToggle />
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="px-4 py-8 sm:px-6 lg:px-8">
         {children}
       </main>
 
