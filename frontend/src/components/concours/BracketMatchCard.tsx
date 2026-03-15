@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { SaisirScoreDialog } from './SaisirScoreDialog';
@@ -14,7 +15,67 @@ interface BracketMatchCardProps {
   readOnly?: boolean;
 }
 
-export function BracketMatchCard({ match, concoursId, equipeLookup, variant = 'principal', terrains = [], readOnly = false }: BracketMatchCardProps) {
+function TeamRow({
+  nom,
+  score,
+  isWinner,
+  isLoser,
+  isTbd,
+}: {
+  nom: string;
+  score?: number;
+  isWinner: boolean;
+  isLoser: boolean;
+  isTbd: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 px-3 py-2.5 transition-colors',
+        isWinner && 'bg-emerald-600/20',
+        isLoser && 'opacity-35',
+      )}
+    >
+      {/* Indicateur gagnant */}
+      <span
+        className={cn(
+          'h-2 w-2 shrink-0 rounded-full transition-colors',
+          isWinner ? 'bg-emerald-400' : 'bg-transparent',
+        )}
+      />
+      {/* Nom */}
+      <span
+        className={cn(
+          'flex-1 truncate text-sm',
+          isTbd ? 'italic text-white/30' : 'text-white',
+          isWinner && 'font-semibold',
+        )}
+      >
+        {nom}
+      </span>
+      {/* Score */}
+      {score !== undefined && (
+        <span
+          className={cn(
+            'shrink-0 font-mono font-black text-lg leading-none tabular-nums',
+            isWinner ? 'text-emerald-300' : 'text-white/45',
+          )}
+        >
+          {score}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function BracketMatchCard({
+  match,
+  concoursId,
+  equipeLookup,
+  variant = 'principal',
+  terrains = [],
+  readOnly = false,
+}: BracketMatchCardProps) {
   const queryClient = useQueryClient();
 
   const demarrerMutation = useMutation({
@@ -33,82 +94,122 @@ export function BracketMatchCard({ match, concoursId, equipeLookup, variant = 'p
   const nomB = equipeLookup.get(match.equipeBId) ?? 'À déterminer';
   const score = match.score;
   const isTermine = match.statut === 'TERMINE' || match.statut === 'FORFAIT';
+  const isEnCours = match.statut === 'EN_COURS';
 
-  const aWins = isTermine && score && score.equipeA > score.equipeB;
-  const bWins = isTermine && score && score.equipeB > score.equipeA;
+  const aWins = isTermine && score != null && score.equipeA > score.equipeB;
+  const bWins = isTermine && score != null && score.equipeB > score.equipeA;
 
   const isConsolante = variant === 'consolante';
-  const baseBg = isConsolante ? 'bg-amber-900 text-white' : 'bg-[var(--color-bracket-bg)] text-white';
-  const winBg = isConsolante ? 'bg-amber-600 text-white font-semibold' : 'bg-green-600 text-white font-semibold';
-  const borderColor = isConsolante ? 'border-amber-700' : 'border-[var(--color-bracket-card)]';
-  const actionBg = isConsolante ? 'bg-amber-800' : 'bg-[var(--color-bracket-card)]';
-
-  // Terrains disponibles pour le sélecteur (pas utilisés par un autre match actif)
-  const canChangeTerrain = !readOnly && (match.statut === 'PROGRAMME' || match.statut === 'EN_COURS');
+  const canChangeTerrain =
+    !readOnly && (match.statut === 'PROGRAMME' || match.statut === 'EN_COURS');
 
   return (
-    <div className={`bracket-match-card w-full rounded-lg overflow-hidden shadow-sm border ${borderColor}`}>
-      {/* Terrain badge */}
-      {match.terrainNumero != null && (
-        <div className={`flex items-center justify-center ${actionBg} px-2 py-0.5 text-xs text-white/70`}>
-          {canChangeTerrain && terrains.length > 0 ? (
+    <div
+      className={cn(
+        'bracket-match-card w-full overflow-hidden rounded-lg shadow-lg border',
+        isConsolante
+          ? 'border-amber-700/50 bg-amber-950/80'
+          : 'border-[var(--color-bracket-card)] bg-[var(--color-bracket-bg)]',
+      )}
+    >
+      {/* Barre supérieure : terrain + statut */}
+      <div
+        className={cn(
+          'flex items-center justify-between px-3 py-1',
+          isConsolante
+            ? 'bg-amber-900/60'
+            : 'bg-[var(--color-bracket-card)]/80',
+        )}
+      >
+        {/* Terrain */}
+        {match.terrainNumero != null ? (
+          canChangeTerrain && terrains.length > 0 ? (
             <select
-              className="bg-transparent text-white/90 text-xs text-center cursor-pointer border-none outline-none appearance-none"
+              className={cn(
+                'bg-transparent text-[10px] font-bold tracking-widest cursor-pointer border-none outline-none appearance-none',
+                isConsolante
+                  ? 'text-amber-300'
+                  : 'text-[var(--color-bracket-line)]',
+              )}
               value={match.terrainId ?? ''}
               onChange={(e) => terrainMutation.mutate(e.target.value)}
               disabled={terrainMutation.isPending}
             >
               {match.terrainId && (
-                <option value={match.terrainId}>
-                  T{match.terrainNumero}
-                </option>
+                <option value={match.terrainId}>T{match.terrainNumero}</option>
               )}
               {terrains
                 .filter((t) => t.id !== match.terrainId)
                 .map((t) => (
                   <option key={t.id} value={t.id} disabled={!t.disponible}>
-                    T{t.numero}{!t.disponible ? ' (en cours)' : ''}
+                    T{t.numero}
+                    {!t.disponible ? ' ●' : ''}
                   </option>
                 ))}
             </select>
           ) : (
-            <span>T{match.terrainNumero}</span>
-          )}
-        </div>
-      )}
+            <span
+              className={cn(
+                'text-[10px] font-bold tracking-widest',
+                isConsolante
+                  ? 'text-amber-300/70'
+                  : 'text-[var(--color-bracket-line)]/80',
+              )}
+            >
+              T{match.terrainNumero}
+            </span>
+          )
+        ) : (
+          <span />
+        )}
+
+        {/* Indicateur de statut */}
+        {isEnCours && (
+          <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+            En cours
+          </span>
+        )}
+        {isTermine && (
+          <span className="text-[10px] text-white/25">Terminé</span>
+        )}
+      </div>
+
       {/* Équipe A */}
-      <div
-        className={`flex items-center justify-between px-3 py-2 text-sm ${
-          aWins ? winBg : baseBg
-        }`}
-      >
-        <span className={`truncate ${!equipeLookup.has(match.equipeAId) ? 'italic opacity-60' : ''}`}>
-          {nomA}
-        </span>
-        <span className="ml-2 shrink-0 font-mono text-xs font-bold">
-          {score ? score.equipeA : ''}
-        </span>
-      </div>
+      <TeamRow
+        nom={nomA}
+        score={score?.equipeA}
+        isWinner={!!aWins}
+        isLoser={!!bWins}
+        isTbd={!equipeLookup.has(match.equipeAId)}
+      />
+
+      {/* Séparateur */}
+      <div className="border-t border-white/10" />
+
       {/* Équipe B */}
+      <TeamRow
+        nom={nomB}
+        score={score?.equipeB}
+        isWinner={!!bWins}
+        isLoser={!!aWins}
+        isTbd={!equipeLookup.has(match.equipeBId)}
+      />
+
+      {/* Barre actions — hauteur fixe pour l'alignement du bracket */}
       <div
-        className={`flex items-center justify-between px-3 py-2 text-sm border-t ${borderColor} ${
-          bWins ? winBg : baseBg
-        }`}
+        className={cn(
+          'flex items-center justify-center px-2 py-1.5 min-h-[2rem]',
+          isConsolante
+            ? 'bg-amber-900/40'
+            : 'bg-[var(--color-bracket-card)]/50',
+        )}
       >
-        <span className={`truncate ${!equipeLookup.has(match.equipeBId) ? 'italic opacity-60' : ''}`}>
-          {nomB}
-        </span>
-        <span className="ml-2 shrink-0 font-mono text-xs font-bold">
-          {score ? score.equipeB : ''}
-        </span>
-      </div>
-      {/* Actions — always rendered to keep consistent card height */}
-      <div className={`flex justify-center ${actionBg} px-2 py-1.5 min-h-[2rem]`}>
         {!readOnly && match.statut === 'PROGRAMME' && (
           <Button
             size="sm"
             variant="secondary"
-            className="h-6 text-xs"
+            className="h-6 px-3 text-xs"
             onClick={() => demarrerMutation.mutate()}
             disabled={demarrerMutation.isPending}
           >
@@ -123,15 +224,18 @@ export function BracketMatchCard({ match, concoursId, equipeLookup, variant = 'p
             equipeBNom={nomB}
           />
         )}
-        {!readOnly && match.statut === 'TERMINE' && match.canEditScore && match.score && (
-          <CorrigerScoreDialog
-            concoursId={concoursId}
-            matchId={match.id}
-            equipeANom={nomA}
-            equipeBNom={nomB}
-            currentScore={match.score}
-          />
-        )}
+        {!readOnly &&
+          match.statut === 'TERMINE' &&
+          match.canEditScore &&
+          match.score && (
+            <CorrigerScoreDialog
+              concoursId={concoursId}
+              matchId={match.id}
+              equipeANom={nomA}
+              equipeBNom={nomB}
+              currentScore={match.score}
+            />
+          )}
       </div>
     </div>
   );

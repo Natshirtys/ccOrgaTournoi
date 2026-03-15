@@ -72,8 +72,8 @@ export function KnockoutBracket({
     ? 'bg-amber-700 text-white'
     : 'bg-[var(--color-bracket-bg)] text-[var(--color-bracket-line)]';
 
-  // Card height: 2 team rows (~36px each) + action area (32px) + borders ≈ 106px
-  const CARD_HEIGHT = 106;
+  // Card height: top bar 24 + team A 40 + divider 1 + team B 40 + actions 32 ≈ 137px
+  const CARD_HEIGHT = 137;
   const GAP = 16;
 
   // Check if the last round has all matches finished → can advance
