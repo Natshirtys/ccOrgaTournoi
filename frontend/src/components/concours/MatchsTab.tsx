@@ -159,6 +159,7 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
 
   const allMatchs = data?.data ?? [];
   const hasMultiplePhases = matchsByPhaseAndTour.length > 1;
+  const isRoundRobin = concours.phases.some((p) => p.type === 'CHAMPIONNAT');
 
   return (
     <div className="space-y-6">
@@ -173,6 +174,7 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
         </Button>
       </div>
       {matchsByPhaseAndTour.map(({ phaseId, phaseType, phaseNom, tours }) => {
+        if (isRoundRobin && phaseType === 'CONSOLANTE') return null;
         const phaseData = matchsByPhase.get(phaseId);
         const displayLabel = phaseNom ?? PHASE_LABELS[phaseType] ?? phaseType;
         const headerClass = getPhaseHeaderClass(phaseType, phaseNom);
