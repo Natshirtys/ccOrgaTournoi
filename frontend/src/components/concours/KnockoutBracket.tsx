@@ -69,7 +69,7 @@ export function KnockoutBracket({
 
   const isConsolante = variant === 'consolante';
   const headerBg = isConsolante
-    ? 'bg-amber-700 text-white'
+    ? 'bg-[var(--color-bracket-consolante-card)] text-[var(--color-bracket-consolante-fg)]'
     : 'bg-[var(--color-bracket-bg)] text-[var(--color-bracket-line)]';
 
   // Card height: top bar 24 + team A 40 + divider 1 + team B 40 + actions 32 ≈ 137px

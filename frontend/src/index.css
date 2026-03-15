@@ -30,9 +30,15 @@
   --ring:                   hsl(207 75% 42%);
   --success:                hsl(142 71% 45%);
   --success-foreground:     hsl(0 0% 100%);
-  --bracket-bg:             hsl(225 50% 25%);
-  --bracket-card:           hsl(225 40% 35%);
-  --bracket-line:           hsl(45 90% 55%);
+  /* Bracket KO — mode clair : fond bleu pâle, texte sombre, accents IBM */
+  --bracket-bg:                  hsl(225 30% 94%);
+  --bracket-card:                hsl(225 25% 87%);
+  --bracket-line:                hsl(207 75% 38%);
+  --bracket-fg:                  hsl(225 50% 15%);
+  --bracket-consolante-bg:       hsl(35 65% 93%);
+  --bracket-consolante-card:     hsl(35 55% 85%);
+  --bracket-consolante-line:     hsl(30 80% 35%);
+  --bracket-consolante-fg:       hsl(25 60% 18%);
   /* Classement sportif — pastels IBM (bleu #1b75bc = hsl 207) */
   --classement-bg:          hsl(207 50% 93%);
   --classement-row-odd:     hsl(207 45% 89%);
@@ -63,9 +69,15 @@
   --ring:                   hsl(207 80% 58%);
   --success:                hsl(142 60% 48%);
   --success-foreground:     hsl(0 0% 100%);
-  --bracket-bg:             hsl(225 40% 18%);
-  --bracket-card:           hsl(225 35% 26%);
-  --bracket-line:           hsl(45 90% 55%);
+  /* Bracket KO — mode sombre : fond navy profond, accents dorés */
+  --bracket-bg:                  hsl(225 40% 18%);
+  --bracket-card:                hsl(225 35% 26%);
+  --bracket-line:                hsl(45 90% 55%);
+  --bracket-fg:                  hsl(0 0% 100%);
+  --bracket-consolante-bg:       hsl(20 65% 10%);
+  --bracket-consolante-card:     hsl(20 55% 18%);
+  --bracket-consolante-line:     hsl(35 85% 65%);
+  --bracket-consolante-fg:       hsl(35 80% 92%);
   /* Classement sportif */
   --classement-bg:          hsl(220 55% 10%);
   --classement-row-odd:     hsl(220 45% 13%);
@@ -96,9 +108,14 @@
   --color-ring:                   var(--ring);
   --color-success:                var(--success);
   --color-success-foreground:     var(--success-foreground);
-  --color-bracket-bg:             var(--bracket-bg);
-  --color-bracket-card:           var(--bracket-card);
-  --color-bracket-line:           var(--bracket-line);
+  --color-bracket-bg:                  var(--bracket-bg);
+  --color-bracket-card:                var(--bracket-card);
+  --color-bracket-line:                var(--bracket-line);
+  --color-bracket-fg:                  var(--bracket-fg);
+  --color-bracket-consolante-bg:       var(--bracket-consolante-bg);
+  --color-bracket-consolante-card:     var(--bracket-consolante-card);
+  --color-bracket-consolante-line:     var(--bracket-consolante-line);
+  --color-bracket-consolante-fg:       var(--bracket-consolante-fg);
   --color-classement-bg:          var(--classement-bg);
   --color-classement-row-odd:     var(--classement-row-odd);
   --color-classement-row-even:    var(--classement-row-even);

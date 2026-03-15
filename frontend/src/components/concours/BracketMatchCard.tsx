@@ -15,24 +15,58 @@ interface BracketMatchCardProps {
   readOnly?: boolean;
 }
 
+// Tokens sémantiques par variant — respectent light/dark via CSS variables
+const TOKENS = {
+  principal: {
+    cardBg:    'bg-bracket-bg border-bracket-card',
+    barBg:     'bg-black/20',
+    lineColor: 'text-bracket-line',
+    fg:        'text-bracket-fg',
+    fgMuted:   'text-bracket-fg/40',
+    fgDim:     'text-bracket-fg/30',
+    fgScore:   'text-bracket-fg/45',
+    divider:   'border-bracket-fg/15',
+    winner:    'text-emerald-600',
+    winnerDot: 'bg-emerald-500',
+    winnerBg:  'bg-emerald-500/15',
+    enCours:   'text-emerald-600',
+  },
+  consolante: {
+    cardBg:    'bg-bracket-consolante-bg border-bracket-consolante-card',
+    barBg:     'bg-black/25',
+    lineColor: 'text-bracket-consolante-line',
+    fg:        'text-[var(--color-bracket-consolante-fg)]',
+    fgMuted:   'text-[var(--color-bracket-consolante-fg)]/40',
+    fgDim:     'text-[var(--color-bracket-consolante-fg)]/30',
+    fgScore:   'text-[var(--color-bracket-consolante-fg)]/45',
+    divider:   'border-[var(--color-bracket-consolante-fg)]/15',
+    winner:    'text-emerald-600',
+    winnerDot: 'bg-emerald-500',
+    winnerBg:  'bg-emerald-500/15',
+    enCours:   'text-emerald-600',
+  },
+} as const;
+
 function TeamRow({
   nom,
   score,
   isWinner,
   isLoser,
   isTbd,
+  tokens,
 }: {
   nom: string;
   score?: number;
   isWinner: boolean;
   isLoser: boolean;
   isTbd: boolean;
+  tokens: typeof TOKENS.principal;
 }) {
   return (
     <div
       className={cn(
         'flex items-center gap-2 px-3 py-2.5 transition-colors',
-        isWinner && 'bg-emerald-600/20',
+        isWinner && tokens.winnerBg,
         isLoser && 'opacity-35',
       )}
     >
@@ -40,14 +74,14 @@ function TeamRow({
       <span
         className={cn(
           'h-2 w-2 shrink-0 rounded-full transition-colors',
-          isWinner ? 'bg-emerald-400' : 'bg-transparent',
+          isWinner ? tokens.winnerDot : 'bg-transparent',
         )}
       />
       {/* Nom */}
       <span
         className={cn(
           'flex-1 truncate text-sm',
-          isTbd ? 'italic text-white/30' : 'text-white',
+          isTbd ? cn('italic', tokens.fgDim) : tokens.fg,
           isWinner && 'font-semibold',
         )}
       >
@@ -58,7 +92,7 @@ function TeamRow({
         <span
           className={cn(
             'shrink-0 font-mono font-black text-lg leading-none tabular-nums',
-            isWinner ? 'text-emerald-300' : 'text-white/45',
+            isWinner ? tokens.winner : tokens.fgScore,
           )}
         >
           {score}
@@ -99,35 +133,22 @@ export function BracketMatchCard({
   const aWins = isTermine && score != null && score.equipeA > score.equipeB;
   const bWins = isTermine && score != null && score.equipeB > score.equipeA;
 
-  const isConsolante = variant === 'consolante';
+  const tokens = TOKENS[variant];
   const canChangeTerrain =
     !readOnly && (match.statut === 'PROGRAMME' || match.statut === 'EN_COURS');
 
   return (
-    <div
-      className={cn(
-        'bracket-match-card w-full overflow-hidden rounded-lg shadow-lg border',
-        isConsolante
-          ? 'border-amber-700 bg-amber-950'
-          : 'border-[var(--color-bracket-card)] bg-[var(--color-bracket-bg)]',
-      )}
-    >
+    <div className={cn('bracket-match-card w-full overflow-hidden rounded-lg shadow-lg border', tokens.cardBg)}>
+
       {/* Barre supérieure : terrain + statut */}
-      <div
-        className={cn(
-          'flex items-center justify-between px-3 py-1.5',
-          isConsolante ? 'bg-black/25' : 'bg-black/20',
-        )}
-      >
+      <div className={cn('flex items-center justify-between px-3 py-1.5', tokens.barBg)}>
         {/* Terrain */}
         {match.terrainNumero != null ? (
           canChangeTerrain && terrains.length > 0 ? (
             <select
               className={cn(
                 'bg-transparent text-xs font-bold cursor-pointer border-none outline-none appearance-none',
-                isConsolante
-                  ? 'text-amber-300'
-                  : 'text-[var(--color-bracket-line)]',
+                tokens.lineColor,
               )}
               value={match.terrainId ?? ''}
               onChange={(e) => terrainMutation.mutate(e.target.value)}
@@ -147,14 +168,7 @@ export function BracketMatchCard({
                 ))}
             </select>
           ) : (
-            <span
-              className={cn(
-                'text-xs font-bold',
-                isConsolante
-                  ? 'text-amber-300/80'
-                  : 'text-[var(--color-bracket-line)]',
-              )}
-            >
+            <span className={cn('text-xs font-bold', tokens.lineColor)}>
               {match.terrainNom ?? `T${match.terrainNumero}`}
             </span>
           )
@@ -164,13 +178,13 @@ export function BracketMatchCard({
 
         {/* Indicateur de statut */}
         {isEnCours && (
-          <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+          <span className={cn('flex items-center gap-1 text-[10px] font-semibold', tokens.enCours)}>
+            <span className={cn('h-1.5 w-1.5 animate-pulse rounded-full', tokens.winnerDot)} />
             En cours
           </span>
         )}
         {isTermine && (
-          <span className="text-[10px] text-white/40">Terminé</span>
+          <span className={cn('text-[10px]', tokens.fgMuted)}>Terminé</span>
         )}
       </div>
 
@@ -181,10 +195,11 @@ export function BracketMatchCard({
         isWinner={!!aWins}
         isLoser={!!bWins}
         isTbd={!equipeLookup.has(match.equipeAId)}
+        tokens={tokens}
       />
 
       {/* Séparateur */}
-      <div className="border-t border-white/10" />
+      <div className={cn('border-t', tokens.divider)} />
 
       {/* Équipe B */}
       <TeamRow
@@ -193,17 +208,11 @@ export function BracketMatchCard({
         isWinner={!!bWins}
         isLoser={!!aWins}
         isTbd={!equipeLookup.has(match.equipeBId)}
+        tokens={tokens}
       />
 
       {/* Barre actions — hauteur fixe pour l'alignement du bracket */}
-      <div
-        className={cn(
-          'flex items-center justify-center px-2 py-1.5 min-h-[2rem]',
-          isConsolante
-            ? 'bg-black/25'
-            : 'bg-black/20',
-        )}
-      >
+      <div className={cn('flex items-center justify-center px-2 py-1.5 min-h-[2rem]', tokens.barBg)}>
         {!readOnly && match.statut === 'PROGRAMME' && (
           <Button
             size="sm"
