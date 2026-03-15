@@ -108,17 +108,15 @@ export function BracketMatchCard({
       className={cn(
         'bracket-match-card w-full overflow-hidden rounded-lg shadow-lg border',
         isConsolante
-          ? 'border-amber-700/50 bg-amber-950/80'
+          ? 'border-amber-700 bg-amber-950'
           : 'border-[var(--color-bracket-card)] bg-[var(--color-bracket-bg)]',
       )}
     >
       {/* Barre supérieure : terrain + statut */}
       <div
         className={cn(
-          'flex items-center justify-between px-3 py-1',
-          isConsolante
-            ? 'bg-amber-900/60'
-            : 'bg-[var(--color-bracket-card)]/80',
+          'flex items-center justify-between px-3 py-1.5',
+          isConsolante ? 'bg-black/25' : 'bg-black/20',
         )}
       >
         {/* Terrain */}
@@ -126,7 +124,7 @@ export function BracketMatchCard({
           canChangeTerrain && terrains.length > 0 ? (
             <select
               className={cn(
-                'bg-transparent text-[10px] font-bold tracking-widest cursor-pointer border-none outline-none appearance-none',
+                'bg-transparent text-xs font-bold cursor-pointer border-none outline-none appearance-none',
                 isConsolante
                   ? 'text-amber-300'
                   : 'text-[var(--color-bracket-line)]',
@@ -136,27 +134,28 @@ export function BracketMatchCard({
               disabled={terrainMutation.isPending}
             >
               {match.terrainId && (
-                <option value={match.terrainId}>T{match.terrainNumero}</option>
+                <option value={match.terrainId}>
+                  {match.terrainNom ?? `T${match.terrainNumero}`}
+                </option>
               )}
               {terrains
                 .filter((t) => t.id !== match.terrainId)
                 .map((t) => (
                   <option key={t.id} value={t.id} disabled={!t.disponible}>
-                    T{t.numero}
-                    {!t.disponible ? ' ●' : ''}
+                    {t.nom}{!t.disponible ? ' ●' : ''}
                   </option>
                 ))}
             </select>
           ) : (
             <span
               className={cn(
-                'text-[10px] font-bold tracking-widest',
+                'text-xs font-bold',
                 isConsolante
-                  ? 'text-amber-300/70'
-                  : 'text-[var(--color-bracket-line)]/80',
+                  ? 'text-amber-300/80'
+                  : 'text-[var(--color-bracket-line)]',
               )}
             >
-              T{match.terrainNumero}
+              {match.terrainNom ?? `T${match.terrainNumero}`}
             </span>
           )
         ) : (
@@ -171,7 +170,7 @@ export function BracketMatchCard({
           </span>
         )}
         {isTermine && (
-          <span className="text-[10px] text-white/25">Terminé</span>
+          <span className="text-[10px] text-white/40">Terminé</span>
         )}
       </div>
 
@@ -201,8 +200,8 @@ export function BracketMatchCard({
         className={cn(
           'flex items-center justify-center px-2 py-1.5 min-h-[2rem]',
           isConsolante
-            ? 'bg-amber-900/40'
-            : 'bg-[var(--color-bracket-card)]/50',
+            ? 'bg-black/25'
+            : 'bg-black/20',
         )}
       >
         {!readOnly && match.statut === 'PROGRAMME' && (
