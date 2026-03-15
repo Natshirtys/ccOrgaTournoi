@@ -240,15 +240,15 @@ export function PoolGroupCard({
         {/* Classement */}
         <div className="divide-y">
           {/* En-tête du tableau */}
-          <div className="grid grid-cols-[1.5rem_1fr_2rem_2rem_2.5rem] sm:grid-cols-[1.5rem_1fr_5rem_2rem_2rem_3rem_3rem_3rem_2.5rem] items-center gap-x-2 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="grid grid-cols-[1.5rem_1fr_2rem_2rem_2.5rem] 2xl:grid-cols-[1.5rem_1fr_5rem_2rem_2rem_3rem_3rem_3rem_2.5rem] items-center gap-x-2 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             <span className="text-center">#</span>
             <span>Équipe</span>
-            <span className="hidden sm:block text-center">Dest.</span>
+            <span className="hidden 2xl:block text-center">Dest.</span>
             <span className="text-center">V</span>
             <span className="text-center">D</span>
-            <span className="hidden sm:block text-center">Pm</span>
-            <span className="hidden sm:block text-center">Pe</span>
-            <span className="hidden sm:block text-center">Diff</span>
+            <span className="hidden 2xl:block text-center">Pm</span>
+            <span className="hidden 2xl:block text-center">Pe</span>
+            <span className="hidden 2xl:block text-center">Diff</span>
             <span className="text-center">Pts</span>
           </div>
 
@@ -261,7 +261,7 @@ export function PoolGroupCard({
               <div
                 key={team.equipeId}
                 className={cn(
-                  'grid grid-cols-[1.5rem_1fr_2rem_2rem_2.5rem] sm:grid-cols-[1.5rem_1fr_5rem_2rem_2rem_3rem_3rem_3rem_2.5rem] items-center gap-x-2 border-l-4 px-4 py-2.5 text-sm',
+                  'grid grid-cols-[1.5rem_1fr_2rem_2rem_2.5rem] 2xl:grid-cols-[1.5rem_1fr_5rem_2rem_2rem_3rem_3rem_3rem_2.5rem] items-center gap-x-2 border-l-4 px-4 py-2.5 text-sm',
                   rrConfig
                     ? cn(rrConfig.bg, rrConfig.accent)
                     : mode === 'gsl' && isQualified
@@ -287,7 +287,7 @@ export function PoolGroupCard({
                 <span className="truncate font-medium min-w-0">{team.nom}</span>
 
                 {/* Destination */}
-                <div className="hidden sm:flex justify-center">
+                <div className="hidden 2xl:flex justify-center">
                   {rrConfig ? (
                     <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-semibold', rrConfig.labelClass)}>
                       {rrConfig.label}
@@ -304,11 +304,11 @@ export function PoolGroupCard({
                 {/* D */}
                 <span className="text-center tabular-nums text-muted-foreground">{team.defaites}</span>
                 {/* Pm */}
-                <span className="hidden sm:block text-center tabular-nums text-xs text-emerald-700">{team.pointsMarques}</span>
+                <span className="hidden 2xl:block text-center tabular-nums text-xs text-emerald-700">{team.pointsMarques}</span>
                 {/* Pe */}
-                <span className="hidden sm:block text-center tabular-nums text-xs text-destructive/70">{team.pointsEncaisses}</span>
+                <span className="hidden 2xl:block text-center tabular-nums text-xs text-destructive/70">{team.pointsEncaisses}</span>
                 {/* Diff */}
-                <span className={cn('hidden sm:block text-center text-xs tabular-nums font-medium', diff > 0 ? 'text-emerald-700' : diff < 0 ? 'text-destructive' : 'text-muted-foreground')}>
+                <span className={cn('hidden 2xl:block text-center text-xs tabular-nums font-medium', diff > 0 ? 'text-emerald-700' : diff < 0 ? 'text-destructive' : 'text-muted-foreground')}>
                   {diff > 0 ? `+${diff}` : diff}
                 </span>
                 {/* Pts */}

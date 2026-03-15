@@ -255,7 +255,7 @@ function PoolsPhaseView({
   const pools = useMemo(() => reconstructPools(matchs), [matchs]);
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       {pools.map((pool, idx) => (
         <PoolGroupCard
           key={idx}
