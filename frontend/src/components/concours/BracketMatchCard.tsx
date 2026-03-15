@@ -47,6 +47,8 @@ const TOKENS = {
   },
 } as const;
 
+type TokenSet = typeof TOKENS[keyof typeof TOKENS];
+
 function TeamRow({
   nom,
   score,
@@ -60,7 +62,7 @@ function TeamRow({
   isWinner: boolean;
   isLoser: boolean;
   isTbd: boolean;
-  tokens: typeof TOKENS.principal;
+  tokens: TokenSet;
 }) {
   return (
     <div
