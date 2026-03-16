@@ -2,6 +2,21 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { ConcoursDetail, MatchDto, LigneClassementDto } from '@/types/concours';
 
+// ─── Types partagés pour le résumé des victoires ──────────────────────────────
+
+export interface ResumeSeg {
+  key: string;
+  label: string;
+}
+
+export interface ResumeTeam {
+  equipeId: string;
+  nom: string;
+  totalVictoires: number;
+  /** undefined = équipe non participante à ce segment */
+  segments: Record<string, number | undefined>;
+}
+
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const TYPE_EQUIPE_LABEL: Record<string, string> = {
@@ -508,4 +523,111 @@ export function exportArchivePdf(
   }
 
   doc.save(`archive-${slugify(concours.nom)}.pdf`);
+}
+
+// ─── Export : résumé des victoires (fédération) ───────────────────────────────
+
+export function exportResumePdf(
+  concours: ConcoursDetail,
+  teams: ResumeTeam[],
+  segments: ResumeSeg[],
+): void {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const now = formatDateFr(new Date().toISOString());
+  const dateStr = formatDateFr(concours.dates.debut);
+  const dateFin = formatDateFr(concours.dates.fin);
+  const dateRange =
+    concours.dates.debut === concours.dates.fin ? dateStr : `${dateStr} - ${dateFin}`;
+  const infoLine = [concours.lieu, dateRange].filter(Boolean).join(' — ');
+
+  const typeLabel = TYPE_EQUIPE_LABEL[concours.formule.typeEquipe] ?? concours.formule.typeEquipe;
+  const typePhase = concours.formule.typePhase;
+  const formatLabel = typePhase ? (FORMAT_LABELS[typePhase] ?? typePhase) : '';
+
+  // En-tête
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Résumé des victoires — ${concours.nom}`, 148, 18, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(infoLine, 148, 26, { align: 'center' });
+  doc.text([typeLabel, formatLabel].filter(Boolean).join(' · '), 148, 32, { align: 'center' });
+  doc.setTextColor(0);
+
+  doc.setDrawColor(180);
+  doc.line(20, 36, 277, 36);
+  doc.setDrawColor(0);
+
+  // Sous-titre explicatif
+  doc.setFontSize(8);
+  doc.setTextColor(130);
+  doc.text('Document de comptabilisation des points de catégorisation — usage fédéral', 148, 41, { align: 'center' });
+  doc.setTextColor(0);
+
+  // Colonnes dynamiques
+  const colWidths: number[] = [14, 60, 18, ...segments.map(() => 22)];
+  const totalW = colWidths.reduce((a, b) => a + b, 0);
+  // Si trop large, comprimer les colonnes de segments
+  const maxW = 257; // paysage A4 − marges
+  const scale = totalW > maxW ? maxW / totalW : 1;
+  const scaledWidths = colWidths.map((w) => Math.round(w * scale * 10) / 10);
+
+  const head = [['Rang', 'Équipe', 'Total V', ...segments.map((s) => s.label)]];
+  const body = teams.map((team, idx) => [
+    String(idx + 1),
+    team.nom,
+    String(team.totalVictoires),
+    ...segments.map((seg) => {
+      const v = team.segments[seg.key];
+      return v === undefined ? '—' : String(v);
+    }),
+  ]);
+
+  autoTable(doc, {
+    startY: 45,
+    head,
+    body,
+    styles: { fontSize: 9, cellPadding: 2.5 },
+    headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: scaledWidths[0] },
+      1: { cellWidth: scaledWidths[1] },
+      2: { halign: 'center', cellWidth: scaledWidths[2], fontStyle: 'bold' },
+      ...Object.fromEntries(
+        segments.map((_, i) => [
+          i + 3,
+          { halign: 'center' as const, cellWidth: scaledWidths[i + 3] },
+        ]),
+      ),
+    },
+    didParseCell: (data) => {
+      if (data.section !== 'body') return;
+      // Total V en vert si > 0
+      if (data.column.index === 2) {
+        const v = Number(data.cell.raw);
+        if (v > 0) {
+          data.cell.styles.textColor = [22, 163, 74];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+      // Victoires par segment en vert si > 0
+      if (data.column.index >= 3) {
+        const raw = String(data.cell.raw);
+        if (raw !== '—' && raw !== '0' && Number(raw) > 0) {
+          data.cell.styles.textColor = [22, 163, 74];
+        }
+        if (raw === '—') {
+          data.cell.styles.textColor = [180, 180, 180];
+        }
+      }
+      // Podium : fond coloré pour les 3 premiers
+      if (data.row.index === 0) data.cell.styles.fillColor = [254, 243, 199]; // amber-100
+      if (data.row.index === 1) data.cell.styles.fillColor = [241, 245, 249]; // slate-100
+      if (data.row.index === 2) data.cell.styles.fillColor = [255, 247, 237]; // orange-50
+    },
+  });
+
+  drawFooter(doc, now);
+  doc.save(`resume-victoires-${slugify(concours.nom)}.pdf`);
 }

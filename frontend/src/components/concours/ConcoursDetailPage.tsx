@@ -7,6 +7,7 @@ import { InscriptionsTab } from './InscriptionsTab';
 import { TerrainsTab } from './TerrainsTab';
 import { MatchsTab } from './MatchsTab';
 import { ClassementTab } from './ClassementTab';
+import { ResumeTab } from './ResumeTab';
 import { useAuth } from '@/auth/AuthContext';
 import type { StatutConcours } from '@/types/concours';
 
@@ -71,6 +72,9 @@ export function ConcoursDetailPage({ concoursId, onBack }: ConcoursDetailPagePro
                 Classement
               </TabsTrigger>
             )}
+            <TabsTrigger value="resume" disabled={!matchsEnabled}>
+              Résumé
+            </TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="inscriptions">
@@ -87,6 +91,9 @@ export function ConcoursDetailPage({ concoursId, onBack }: ConcoursDetailPagePro
             <ClassementTab concours={concours} />
           </TabsContent>
         )}
+        <TabsContent value="resume">
+          <ResumeTab concours={concours} />
+        </TabsContent>
       </Tabs>
     </div>
   );
