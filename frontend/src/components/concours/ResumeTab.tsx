@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileText, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/ui/action-error';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -14,7 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { fetchMatchs } from '@/api/matchs';
-import { exportResumePdf, type ResumeSeg, type ResumeTeam } from '@/lib/pdf-export';
+import type { ResumeSeg, ResumeTeam } from '@/lib/pdf-export';
 import type { ConcoursDetail, MatchDto } from '@/types/concours';
 
 
@@ -164,6 +165,8 @@ interface ResumeTabProps {
 }
 
 export function ResumeTab({ concours }: ResumeTabProps) {
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<unknown>(null);
   const { data, isLoading } = useQuery({
     queryKey: ['concours', concours.id, 'matchs'],
     queryFn: () => fetchMatchs(concours.id),
@@ -203,6 +206,19 @@ export function ResumeTab({ concours }: ResumeTabProps) {
     (m) => m.statut === 'TERMINE' || m.statut === 'FORFAIT',
   ).length;
 
+  async function handleExport() {
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      const { exportResumePdf } = await import('@/lib/pdf-export');
+      exportResumePdf(concours, teams, segments);
+    } catch (error) {
+      setExportError(error);
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       {/* Barre d'outils */}
@@ -218,12 +234,14 @@ export function ResumeTab({ concours }: ResumeTabProps) {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => exportResumePdf(concours, teams, segments)}
+          onClick={handleExport}
+          disabled={isExporting}
         >
           <FileText className="mr-2 h-4 w-4" />
-          Exporter PDF
+          {isExporting ? 'Génération…' : 'Exporter PDF'}
         </Button>
       </div>
+      <ActionError error={exportError} />
 
       {/* Tableau principal */}
       <Card>

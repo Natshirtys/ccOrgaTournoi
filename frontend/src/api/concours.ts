@@ -37,6 +37,23 @@ export function inscrireEquipe(id: string, payload: InscrireEquipePayload): Prom
   });
 }
 
+export function modifierInscription(
+  concoursId: string,
+  inscriptionId: string,
+  payload: InscrireEquipePayload,
+): Promise<void> {
+  return apiFetch(`/concours/${concoursId}/inscriptions/${inscriptionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function annulerInscription(concoursId: string, inscriptionId: string): Promise<void> {
+  return apiFetch(`/concours/${concoursId}/inscriptions/${inscriptionId}`, {
+    method: 'DELETE',
+  });
+}
+
 export function lancerTirage(id: string, payload: LancerTiragePayload): Promise<void> {
   return apiFetch(`/concours/${id}/tirage`, {
     method: 'POST',

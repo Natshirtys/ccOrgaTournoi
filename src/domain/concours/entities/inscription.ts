@@ -6,10 +6,10 @@ export class Inscription extends Entity {
   constructor(
     id: EntityId,
     public readonly concoursId: EntityId,
-    public readonly equipe: Equipe,
+    private _equipe: Equipe,
     public readonly horodatage: Date,
     private _statut: StatutInscription = StatutInscription.CONFIRMEE,
-    public readonly teteDeSerie: boolean = false,
+    private _teteDeSerie: boolean = false,
   ) {
     super(id);
   }
@@ -19,7 +19,20 @@ export class Inscription extends Entity {
   }
 
   get equipeId(): EntityId {
-    return this.equipe.id;
+    return this._equipe.id;
+  }
+
+  get equipe(): Equipe {
+    return this._equipe;
+  }
+
+  get teteDeSerie(): boolean {
+    return this._teteDeSerie;
+  }
+
+  modifier(equipe: Equipe, teteDeSerie: boolean): void {
+    this._equipe = equipe;
+    this._teteDeSerie = teteDeSerie;
   }
 
   annuler(): void {

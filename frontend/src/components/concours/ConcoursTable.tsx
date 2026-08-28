@@ -14,6 +14,7 @@ import {
 import { ConcoursStatusBadge } from './ConcoursStatusBadge';
 import { cn } from '@/lib/utils';
 import type { ConcoursSummary } from '@/types/concours';
+import { concoursPath } from '@/lib/navigation';
 
 const TYPE_LABELS: Record<string, string> = {
   TETE_A_TETE: 'Tête-à-tête',
@@ -83,9 +84,18 @@ export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours
           {/* Infos principales */}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="truncate text-base font-semibold text-foreground group-hover:text-primary transition-colors">
+              <a
+                href={concoursPath(c.id)}
+                className="truncate text-base font-semibold text-foreground transition-colors group-hover:text-primary hover:underline"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                  event.preventDefault();
+                  onSelectConcours(c.id);
+                }}
+              >
                 {c.nom}
-              </span>
+              </a>
               <ConcoursStatusBadge statut={c.statut} />
             </div>
 

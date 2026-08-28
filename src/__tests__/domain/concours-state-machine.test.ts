@@ -156,6 +156,25 @@ describe('Inscriptions', () => {
     ).toThrow(InvariantViolationError);
   });
 
+  it("refuse deux équipes portant le même nom sans tenir compte des majuscules", () => {
+    const c = creerConcoursTest();
+    c.ouvrirInscriptions();
+    c.inscrireEquipe(creerInscription('insc1', 'c1', new Equipe('eq1', [], 'club1', 'Les Champions')));
+
+    expect(() =>
+      c.inscrireEquipe(creerInscription('insc2', 'c1', new Equipe('eq2', [], 'club2', '  les champions  '))),
+    ).toThrow(InvariantViolationError);
+  });
+
+  it('refuse un joueur présent deux fois dans la même équipe', () => {
+    const c = creerConcoursTest();
+    c.ouvrirInscriptions();
+    const equipe = new Equipe('eq1', ['Alice', 'alice', 'Bob'], 'club1', 'Equipe 1');
+
+    expect(() => c.inscrireEquipe(creerInscription('insc1', 'c1', equipe)))
+      .toThrow(InvariantViolationError);
+  });
+
   it('refuse une équipe avec mauvais nombre de joueurs', () => {
     const c = creerConcoursTest(); // formule = TRIPLETTE (3 joueurs)
     c.ouvrirInscriptions();
@@ -171,6 +190,36 @@ describe('Inscriptions', () => {
     expect(c.nbEquipesInscrites).toBe(1);
     c.annulerInscription('insc1');
     expect(c.nbEquipesInscrites).toBe(0);
+  });
+
+  it('modifie une inscription ouverte en conservant son identité', () => {
+    const c = creerConcoursTest();
+    c.ouvrirInscriptions();
+    c.inscrireEquipe(creerInscription('insc1', 'c1', creerEquipeTest('eq1', ['j1', 'j2', 'j3'], 'club1')));
+
+    c.modifierInscription(
+      'insc1',
+      new Equipe('eq1', ['j4', 'j5', 'j6'], 'club2', 'Nouveau nom'),
+      true,
+    );
+
+    expect(c.inscriptionsActives[0].equipeId).toBe('eq1');
+    expect(c.inscriptionsActives[0].equipe.nom).toBe('Nouveau nom');
+    expect(c.inscriptionsActives[0].teteDeSerie).toBe(true);
+  });
+
+  it('refuse modification et annulation après clôture des inscriptions', () => {
+    const c = creerConcoursTest();
+    c.ouvrirInscriptions();
+    c.inscrireEquipe(creerInscription('insc1', 'c1', creerEquipeTest('eq1', ['j1', 'j2', 'j3'], 'club1')));
+    c.cloturerInscriptions();
+
+    expect(() => c.annulerInscription('insc1')).toThrow(InvariantViolationError);
+    expect(() => c.modifierInscription(
+      'insc1',
+      new Equipe('eq1', ['j4', 'j5', 'j6'], 'club2', 'Nouveau nom'),
+      false,
+    )).toThrow(InvariantViolationError);
   });
 });
 

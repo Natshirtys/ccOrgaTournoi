@@ -97,7 +97,7 @@ export interface CreateConcoursPayload {
   dateDebut: string;
   dateFin?: string;
   lieu?: string;
-  organisateurId: string;
+  organisateurId?: string;
   typeEquipe: TypeEquipe;
   typePhase?: TypePhase;
   nbTerrains: number;

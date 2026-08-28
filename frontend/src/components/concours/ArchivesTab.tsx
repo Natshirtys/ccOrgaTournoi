@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Calendar, Users, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/ui/action-error';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,8 +15,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { fetchConcoursDetail } from '@/api/concours';
 import { fetchMatchs, fetchClassement } from '@/api/matchs';
-import { exportArchivePdf } from '@/lib/pdf-export';
 import type { ConcoursSummary } from '@/types/concours';
+import { concoursPath } from '@/lib/navigation';
 
 const TYPE_LABELS: Record<string, string> = {
   TETE_A_TETE: 'Tête-à-tête',
@@ -42,11 +43,14 @@ interface ArchivesTabProps {
 
 export function ArchivesTab({ archives, onSupprimer, onSelectConcours }: ArchivesTabProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<unknown>(null);
 
   async function handleExportPdf(id: string) {
     setLoadingId(id);
+    setExportError(null);
     try {
-      const [concours, matchsRes, classementRes] = await Promise.all([
+      const [{ exportArchivePdf }, concours, matchsRes, classementRes] = await Promise.all([
+        import('@/lib/pdf-export'),
         fetchConcoursDetail(id),
         fetchMatchs(id),
         fetchClassement(id),
@@ -58,6 +62,8 @@ export function ArchivesTab({ archives, onSupprimer, onSelectConcours }: Archive
       }
 
       exportArchivePdf(concours, matchsRes.data, classementRes.classement, equipeLookup);
+    } catch (error) {
+      setExportError(error);
     } finally {
       setLoadingId(null);
     }
@@ -74,6 +80,7 @@ export function ArchivesTab({ archives, onSupprimer, onSelectConcours }: Archive
 
   return (
     <div className="space-y-3">
+      <ActionError error={exportError} />
       {archives.map((c) => (
         <div
           key={c.id}
@@ -83,7 +90,22 @@ export function ArchivesTab({ archives, onSupprimer, onSelectConcours }: Archive
           {/* Infos */}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="truncate text-base font-semibold text-foreground/70">{c.nom}</span>
+              {onSelectConcours ? (
+                <a
+                  href={concoursPath(c.id)}
+                  className="truncate text-base font-semibold text-foreground/70 hover:text-primary hover:underline"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                    event.preventDefault();
+                    onSelectConcours(c.id);
+                  }}
+                >
+                  {c.nom}
+                </a>
+              ) : (
+                <span className="truncate text-base font-semibold text-foreground/70">{c.nom}</span>
+              )}
               <span className="inline-flex items-center rounded-full border border-border/50 bg-muted/50 px-2.5 py-0.5 text-xs font-medium text-muted-foreground/70">
                 Archivé
               </span>

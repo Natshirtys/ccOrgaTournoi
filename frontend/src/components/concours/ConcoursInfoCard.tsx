@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
+import { ActionError } from '@/components/ui/action-error';
 import { Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -222,6 +223,11 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
 
   const statut = concours.statut;
   const typePhase = concours.formule.typePhase ?? concours.phases[0]?.type;
+  const actionError = ouvrirMutation.error
+    ?? cloturerMutation.error
+    ?? tirageMutation.error
+    ?? tourSuivantMutation.error
+    ?? terminerMutation.error;
 
   return (
     <Card>
@@ -348,6 +354,9 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
               </AlertDialog>
             </>
           )}
+        </div>
+        <div className="mt-3">
+          <ActionError error={actionError} />
         </div>
       </CardContent>
     </Card>

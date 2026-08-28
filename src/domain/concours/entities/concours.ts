@@ -128,24 +128,29 @@ export class Concours extends AggregateRoot {
   // --- Inscriptions ---
 
   inscrireEquipe(inscription: Inscription): void {
-    if (this._statut !== StatutConcours.INSCRIPTIONS_OUVERTES) {
-      throw new InvariantViolationError('Les inscriptions ne sont pas ouvertes');
-    }
+    this.verifierInscriptionsOuvertes();
     if (this.nbEquipesInscrites >= this.formule.nbEquipesMax) {
       throw new InvariantViolationError('Nombre maximum d\'équipes atteint');
     }
-    // Vérifier composition et doublons seulement si l'équipe a des joueurs
-    if (inscription.equipe.joueurIds.length > 0) {
-      this.verifierPasDeDoublonJoueur(inscription.equipe);
-      inscription.equipe.validateComposition(this.formule.typeEquipe);
-    }
+    this.verifierEquipe(inscription.equipe);
     this._inscriptions.push(inscription);
   }
 
-  annulerInscription(inscriptionId: EntityId): void {
-    const inscription = this._inscriptions.find(i => i.id === inscriptionId);
+  modifierInscription(inscriptionId: EntityId, equipe: Equipe, teteDeSerie: boolean): void {
+    this.verifierInscriptionsOuvertes();
+    const inscription = this._inscriptions.find((i) => i.id === inscriptionId && i.estActive());
     if (!inscription) {
-      throw new InvariantViolationError('Inscription non trouvée');
+      throw new InvariantViolationError('Inscription active non trouvée');
+    }
+    this.verifierEquipe(equipe, inscriptionId);
+    inscription.modifier(equipe, teteDeSerie);
+  }
+
+  annulerInscription(inscriptionId: EntityId): void {
+    this.verifierInscriptionsOuvertes();
+    const inscription = this._inscriptions.find(i => i.id === inscriptionId && i.estActive());
+    if (!inscription) {
+      throw new InvariantViolationError('Inscription active non trouvée');
     }
     inscription.annuler();
   }
@@ -158,19 +163,38 @@ export class Concours extends AggregateRoot {
 
   // --- Validations privées ---
 
-  private verifierPasDeDoublonJoueur(equipe: Equipe): void {
+  private verifierEquipe(equipe: Equipe, inscriptionIdIgnore?: EntityId): void {
+    const nomNormalise = equipe.nom.trim().toLocaleLowerCase('fr-FR');
+    const nomDejaUtilise = this.inscriptionsActives.some(
+      (insc) => insc.id !== inscriptionIdIgnore
+        && insc.equipe.nom.trim().toLocaleLowerCase('fr-FR') === nomNormalise,
+    );
+    if (nomDejaUtilise) {
+      throw new InvariantViolationError(`Une équipe nommée « ${equipe.nom.trim()} » est déjà inscrite`);
+    }
+
+    if (equipe.joueurIds.length === 0) return;
+    equipe.validateComposition(this.formule.typeEquipe);
+
     const joueursInscrits = new Set<EntityId>();
     for (const insc of this.inscriptionsActives) {
+      if (insc.id === inscriptionIdIgnore) continue;
       for (const jId of insc.equipe.joueurIds) {
-        joueursInscrits.add(jId);
+        joueursInscrits.add(jId.trim().toLocaleLowerCase('fr-FR'));
       }
     }
     for (const jId of equipe.joueurIds) {
-      if (joueursInscrits.has(jId)) {
+      if (joueursInscrits.has(jId.trim().toLocaleLowerCase('fr-FR'))) {
         throw new InvariantViolationError(
           `Le joueur ${jId} est déjà inscrit dans une autre équipe de ce concours`,
         );
       }
+    }
+  }
+
+  private verifierInscriptionsOuvertes(): void {
+    if (this._statut !== StatutConcours.INSCRIPTIONS_OUVERTES) {
+      throw new InvariantViolationError('Les inscriptions ne sont pas ouvertes');
     }
   }
 

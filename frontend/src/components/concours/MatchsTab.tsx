@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/ui/action-error';
 import {
   Table,
   TableBody,
@@ -14,7 +15,6 @@ import { MatchRow } from './MatchRow';
 import { PoolGroupCard } from './PoolGroupCard';
 import { KnockoutBracket } from './KnockoutBracket';
 import { fetchMatchs } from '@/api/matchs';
-import { exportFeuillesDeMatch } from '@/lib/pdf-export';
 import type { ConcoursDetail, MatchDto, TerrainDto } from '@/types/concours';
 
 const PHASE_LABELS: Record<string, string> = {
@@ -76,6 +76,8 @@ function reconstructPools(matchs: MatchDto[]): PoolGroup[] {
 }
 
 export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<unknown>(null);
   const { data, isLoading } = useQuery({
     queryKey: ['concours', concours.id, 'matchs'],
     queryFn: () => fetchMatchs(concours.id),
@@ -161,18 +163,33 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
   const hasMultiplePhases = matchsByPhaseAndTour.length > 1;
   const isRoundRobin = concours.phases.some((p) => p.type === 'CHAMPIONNAT');
 
+  async function handleExport() {
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      const { exportFeuillesDeMatch } = await import('@/lib/pdf-export');
+      exportFeuillesDeMatch(concours, allMatchs, equipeLookup);
+    } catch (error) {
+      setExportError(error);
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
         <Button
           variant="outline"
           size="sm"
-          onClick={() => exportFeuillesDeMatch(concours, allMatchs, equipeLookup)}
+          onClick={handleExport}
+          disabled={isExporting}
         >
           <FileText className="mr-2 h-4 w-4" />
-          Exporter feuilles de match
+          {isExporting ? 'Génération…' : 'Exporter feuilles de match'}
         </Button>
       </div>
+      <ActionError error={exportError} />
       {matchsByPhaseAndTour.map(({ phaseId, phaseType, phaseNom, tours }) => {
         if (isRoundRobin && phaseType === 'CONSOLANTE') return null;
         const phaseData = matchsByPhase.get(phaseId);

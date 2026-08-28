@@ -1,3 +1,5 @@
+import { TOKEN_KEY } from './constants';
+
 export const BASE_URL = import.meta.env.VITE_API_URL ?? '/api/v1';
 
 export class ApiError extends Error {
@@ -10,7 +12,6 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const { TOKEN_KEY } = await import('./auth');
   const token = localStorage.getItem(TOKEN_KEY);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

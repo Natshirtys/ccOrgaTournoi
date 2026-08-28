@@ -1,6 +1,5 @@
 import { apiFetch, BASE_URL } from './client';
-
-export const TOKEN_KEY = 'cc-orga-token';
+import { TOKEN_KEY } from './constants';
 
 export interface AuthUser {
   email: string;

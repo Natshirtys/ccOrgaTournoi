@@ -96,7 +96,11 @@ export function assignerTerrainsAuTour(concours: Concours, tour: Tour): void {
  * Si oui, assigne les terrains aux tours suivants de la même phase qui n'en ont pas encore.
  * Permet de gérer les tirages existants et les modes où tous les tours sont pré-générés (CHAMPIONNAT).
  */
-export function assignerTerrainsToursNonAssignes(concours: Concours, tourCourant: Tour, phaseTours: Tour[]): void {
+export function assignerTerrainsToursNonAssignes(
+  concours: Concours,
+  tourCourant: Tour,
+  phaseTours: readonly Tour[],
+): void {
   const tourComplet = tourCourant.matchs.every(
     (m) => m.isBye || m.statut === StatutMatch.TERMINE || m.statut === StatutMatch.FORFAIT,
   );

@@ -1,5 +1,21 @@
-import { Users, Building2, Star, UserRound } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Users, Building2, Star, UserRound, Trash2 } from 'lucide-react';
 import { InscrireEquipeDialog } from './InscrireEquipeDialog';
+import { ModifierEquipeDialog } from './ModifierEquipeDialog';
+import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/ui/action-error';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { annulerInscription } from '@/api/concours';
 import { cn } from '@/lib/utils';
 import type { ConcoursDetail } from '@/types/concours';
 
@@ -8,9 +24,26 @@ interface InscriptionsTabProps {
   readOnly?: boolean;
 }
 
+const JOUEURS_ATTENDUS: Record<string, number> = {
+  TETE_A_TETE: 1,
+  DOUBLETTE: 2,
+  TRIPLETTE: 3,
+  QUADRETTE: 4,
+};
+
 export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabProps) {
+  const queryClient = useQueryClient();
   const canInscrire = !readOnly && concours.statut === 'INSCRIPTIONS_OUVERTES';
   const inscriptions = concours.inscriptions;
+  const joueursAttendus = JOUEURS_ATTENDUS[concours.formule.typeEquipe] ?? 1;
+
+  const annulationMutation = useMutation({
+    mutationFn: (inscriptionId: string) => annulerInscription(concours.id, inscriptionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['concours', concours.id] });
+      queryClient.invalidateQueries({ queryKey: ['concours'] });
+    },
+  });
 
   return (
     <div className="space-y-4">
@@ -26,8 +59,15 @@ export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabP
             )}
           </span>
         </div>
-        {canInscrire && <InscrireEquipeDialog concoursId={concours.id} />}
+        {canInscrire && (
+          <InscrireEquipeDialog
+            concoursId={concours.id}
+            joueursAttendus={joueursAttendus}
+          />
+        )}
       </div>
+
+      <ActionError error={annulationMutation.error} />
 
       {/* État vide */}
       {inscriptions.length === 0 ? (
@@ -84,6 +124,46 @@ export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabP
                 <div className="hidden shrink-0 items-center gap-1.5 text-sm text-muted-foreground sm:flex">
                   <Building2 className="h-3.5 w-3.5 shrink-0" />
                   <span>{insc.club}</span>
+                </div>
+              )}
+
+              {canInscrire && (
+                <div className="flex shrink-0 items-center gap-1">
+                  <ModifierEquipeDialog
+                    concoursId={concours.id}
+                    inscription={insc}
+                    joueursAttendus={joueursAttendus}
+                  />
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        title="Retirer l'équipe"
+                      >
+                        <Trash2 />
+                        <span className="sr-only">Retirer {insc.nomEquipe}</span>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Retirer cette équipe ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          L’inscription de « {insc.nomEquipe} » sera annulée. L’équipe ne participera pas au tirage.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Conserver l’équipe</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => annulationMutation.mutate(insc.id)}
+                        >
+                          Retirer l’équipe
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               )}
             </div>

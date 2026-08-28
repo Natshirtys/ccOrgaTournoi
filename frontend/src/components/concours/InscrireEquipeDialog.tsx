@@ -13,19 +13,22 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ActionError } from '@/components/ui/action-error';
 import { inscrireEquipe } from '@/api/concours';
 
 interface InscrireEquipeDialogProps {
   concoursId: string;
+  joueursAttendus: number;
 }
 
-export function InscrireEquipeDialog({ concoursId }: InscrireEquipeDialogProps) {
+export function InscrireEquipeDialog({ concoursId, joueursAttendus }: InscrireEquipeDialogProps) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [nomEquipe, setNomEquipe] = useState('');
   const [joueurs, setJoueurs] = useState('');
   const [club, setClub] = useState('');
   const [teteDeSerie, setTeteDeSerie] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -44,11 +47,20 @@ export function InscrireEquipeDialog({ concoursId }: InscrireEquipeDialogProps) 
       setJoueurs('');
       setClub('');
       setTeteDeSerie(false);
+      setValidationError(null);
     },
   });
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const joueursList = joueurs.split(',').map((j) => j.trim()).filter(Boolean);
+    if (joueursList.length > 0 && joueursList.length !== joueursAttendus) {
+      setValidationError(
+        `Cette formule attend exactement ${joueursAttendus} joueur${joueursAttendus > 1 ? 's' : ''}.`,
+      );
+      return;
+    }
+    setValidationError(null);
     mutation.mutate();
   }
 
@@ -73,7 +85,9 @@ export function InscrireEquipeDialog({ concoursId }: InscrireEquipeDialogProps) 
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="joueurs">Joueurs (séparés par des virgules)</Label>
+            <Label htmlFor="joueurs">
+              Joueurs <span className="text-xs text-muted-foreground">(optionnel, {joueursAttendus} attendu{joueursAttendus > 1 ? 's' : ''})</span>
+            </Label>
             <Input
               id="joueurs"
               value={joueurs}
@@ -97,6 +111,7 @@ export function InscrireEquipeDialog({ concoursId }: InscrireEquipeDialogProps) 
             />
             <Label htmlFor="teteDeSerie">Tête de série</Label>
           </div>
+          <ActionError error={validationError ?? mutation.error} />
           <DialogFooter>
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? 'Inscription...' : 'Inscrire'}

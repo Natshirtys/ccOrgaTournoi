@@ -7,6 +7,7 @@ import { CreateConcoursDialog } from '@/components/concours/CreateConcoursDialog
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/auth/AuthContext';
 import type { CreateConcoursPayload } from '@/types/concours';
+import { ActionError } from '@/components/ui/action-error';
 
 interface ConcoursListPageProps {
   onSelectConcours: (id: string) => void;
@@ -79,11 +80,15 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
         </div>
         {isAuthenticated && (
           <CreateConcoursDialog
-            onSubmit={(payload) => createMutation.mutate(payload)}
+            onSubmit={(payload) => createMutation.mutateAsync(payload)}
             isPending={createMutation.isPending}
           />
         )}
       </div>
+
+      <ActionError
+        error={ouvrirMutation.error ?? archiverMutation.error ?? supprimerMutation.error}
+      />
 
       {/* Tabs */}
       <Tabs defaultValue="actifs">

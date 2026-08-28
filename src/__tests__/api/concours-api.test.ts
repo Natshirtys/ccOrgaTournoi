@@ -161,6 +161,84 @@ describe('API Concours', () => {
     expect(classement[0].points).toBeGreaterThan(0);
   });
 
+  it('permet de modifier puis annuler une inscription ouverte', async () => {
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'Gestion inscriptions',
+      dateDebut: '2026-07-01',
+      typeEquipe: 'DOUBLETTE',
+    });
+    const concoursId = createRes.body.id as string;
+    await request(app, 'POST', `/api/v1/concours/${concoursId}/ouvrir-inscriptions`);
+
+    const inscriptionRes = await request(app, 'POST', `/api/v1/concours/${concoursId}/inscriptions`, {
+      nomEquipe: 'Equipe initiale',
+      joueurs: ['Alice', 'Bob'],
+      club: 'IBM',
+    });
+    expect(inscriptionRes.status).toBe(201);
+    const inscriptionId = inscriptionRes.body.inscriptionId as string;
+
+    const modificationRes = await request(
+      app,
+      'PATCH',
+      `/api/v1/concours/${concoursId}/inscriptions/${inscriptionId}`,
+      {
+        nomEquipe: 'Equipe corrigée',
+        joueurs: ['Alice', 'Charlie'],
+        club: 'IBM',
+        teteDeSerie: true,
+      },
+    );
+    expect(modificationRes.status).toBe(200);
+
+    const detailRes = await request(app, 'GET', `/api/v1/concours/${concoursId}`);
+    const inscriptions = detailRes.body.inscriptions as Array<Record<string, unknown>>;
+    expect(inscriptions[0]).toMatchObject({
+      id: inscriptionId,
+      nomEquipe: 'Equipe corrigée',
+      joueurs: ['Alice', 'Charlie'],
+      teteDeSerie: true,
+    });
+
+    const annulationRes = await request(
+      app,
+      'DELETE',
+      `/api/v1/concours/${concoursId}/inscriptions/${inscriptionId}`,
+    );
+    expect(annulationRes.status).toBe(204);
+
+    const detailApresAnnulation = await request(app, 'GET', `/api/v1/concours/${concoursId}`);
+    expect(detailApresAnnulation.body.inscriptions).toEqual([]);
+  });
+
+  it("refuse les doublons de nom d'équipe et les compositions incorrectes", async () => {
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'Validations inscriptions',
+      dateDebut: '2026-07-01',
+      typeEquipe: 'DOUBLETTE',
+    });
+    const concoursId = createRes.body.id as string;
+    await request(app, 'POST', `/api/v1/concours/${concoursId}/ouvrir-inscriptions`);
+
+    const first = await request(app, 'POST', `/api/v1/concours/${concoursId}/inscriptions`, {
+      nomEquipe: 'Les Bleus',
+    });
+    expect(first.status).toBe(201);
+
+    const duplicate = await request(app, 'POST', `/api/v1/concours/${concoursId}/inscriptions`, {
+      nomEquipe: '  les bleus ',
+    });
+    expect(duplicate.status).toBe(400);
+    expect(duplicate.body.error).toMatch(/déjà inscrite/i);
+
+    const badComposition = await request(app, 'POST', `/api/v1/concours/${concoursId}/inscriptions`, {
+      nomEquipe: 'Les Rouges',
+      joueurs: ['Alice'],
+    });
+    expect(badComposition.status).toBe(400);
+    expect(badComposition.body.error).toMatch(/exactement 2 joueur/i);
+  });
+
   it('rejette le tirage si le nombre d\'équipes n\'est pas multiple de 4 (poules)', async () => {
     const createRes = await request(app, 'POST', '/api/v1/concours', {
       nom: 'Tournoi 5eq',

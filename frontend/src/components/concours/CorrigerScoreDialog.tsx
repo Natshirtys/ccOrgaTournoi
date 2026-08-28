@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ActionError } from '@/components/ui/action-error';
 import { corrigerScore } from '@/api/matchs';
 
 interface CorrigerScoreDialogProps {
@@ -129,6 +130,7 @@ export function CorrigerScoreDialog({
                 />
               </div>
             </div>
+            <ActionError error={mutation.error} />
             <DialogFooter>
               <Button type="submit" disabled={mutation.isPending}>
                 {mutation.isPending ? 'Enregistrement...' : 'Enregistrer'}

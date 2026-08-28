@@ -112,12 +112,10 @@ describe('AuthService', () => {
 
 describe('POST /api/v1/auth/login', () => {
   let app: express.Express;
-  let authService: AuthService;
 
   beforeEach(() => {
     const ctx = buildContext(true);
     app = createApp(ctx);
-    authService = ctx.authService!;
   });
 
   it('retourne un token avec les bonnes credentials', async () => {

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ActionError } from '@/components/ui/action-error';
 import {
   Select,
   SelectContent,
@@ -21,7 +22,7 @@ import {
 import type { CreateConcoursPayload, TypeEquipe, TypePhase } from '@/types/concours';
 
 interface CreateConcoursDialogProps {
-  onSubmit: (payload: CreateConcoursPayload) => void;
+  onSubmit: (payload: CreateConcoursPayload) => Promise<unknown>;
   isPending: boolean;
 }
 
@@ -33,25 +34,30 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
   const [typeEquipe, setTypeEquipe] = useState<TypeEquipe>('DOUBLETTE');
   const [typePhase, setTypePhase] = useState<TypePhase>('POULES');
   const [nbTerrains, setNbTerrains] = useState(8);
+  const [submitError, setSubmitError] = useState<unknown>(null);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onSubmit({
-      nom,
-      dateDebut,
-      lieu: lieu || undefined,
-      organisateurId: 'org-1',
-      typeEquipe,
-      typePhase,
-      nbTerrains,
-    });
-    setOpen(false);
-    setNom('');
-    setLieu('');
-    setDateDebut('');
-    setTypeEquipe('DOUBLETTE');
-    setTypePhase('POULES');
-    setNbTerrains(8);
+    setSubmitError(null);
+    try {
+      await onSubmit({
+        nom,
+        dateDebut,
+        lieu: lieu || undefined,
+        typeEquipe,
+        typePhase,
+        nbTerrains,
+      });
+      setOpen(false);
+      setNom('');
+      setLieu('');
+      setDateDebut('');
+      setTypeEquipe('DOUBLETTE');
+      setTypePhase('POULES');
+      setNbTerrains(8);
+    } catch (error) {
+      setSubmitError(error);
+    }
   }
 
   return (
@@ -124,6 +130,7 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
               onChange={(e) => setNbTerrains(parseInt(e.target.value, 10) || 0)}
             />
           </div>
+          <ActionError error={submitError} />
           <DialogFooter>
             <Button type="submit" disabled={isPending}>
               {isPending ? 'Création...' : 'Créer'}

@@ -1,10 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ActionError } from '@/components/ui/action-error';
 import { cn } from '@/lib/utils';
 import { fetchClassement } from '@/api/matchs';
-import { exportClassement } from '@/lib/pdf-export';
 import type { ConcoursDetail, LigneClassementDto } from '@/types/concours';
 
 interface ClassementTabProps {
@@ -122,6 +122,8 @@ function ClassementRow({
 
 export function ClassementTab({ concours }: ClassementTabProps) {
   const hasPhases = concours.phases.length > 0;
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<unknown>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['concours', concours.id, 'classement'],
@@ -146,6 +148,19 @@ export function ClassementTab({ concours }: ClassementTabProps) {
 
   const classement = data?.classement ?? [];
 
+  async function handleExport() {
+    setIsExporting(true);
+    setExportError(null);
+    try {
+      const { exportClassement } = await import('@/lib/pdf-export');
+      exportClassement(concours, classement, equipeLookup);
+    } catch (error) {
+      setExportError(error);
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   if (classement.length === 0) {
     return <p className="py-8 text-center text-muted-foreground">Classement non disponible.</p>;
   }
@@ -157,12 +172,14 @@ export function ClassementTab({ concours }: ClassementTabProps) {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => exportClassement(concours, classement, equipeLookup)}
+          onClick={handleExport}
+          disabled={isExporting}
         >
           <Download className="mr-2 h-4 w-4" />
-          Exporter classement
+          {isExporting ? 'Génération…' : 'Exporter classement'}
         </Button>
       </div>
+      <ActionError error={exportError} />
 
       {/* Panneau principal — couleurs via CSS variables */}
       <div className="overflow-hidden rounded-2xl shadow-xl bg-classement-bg">

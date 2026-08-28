@@ -44,9 +44,9 @@ const creerConcoursSchema = z.object({
 });
 
 const inscrireEquipeSchema = z.object({
-  nomEquipe: z.string().min(1),
-  joueurs: z.array(z.string().min(1)).default([]),
-  club: z.string().default(''),
+  nomEquipe: z.string().trim().min(1),
+  joueurs: z.array(z.string().trim().min(1)).default([]),
+  club: z.string().trim().default(''),
   teteDeSerie: z.boolean().default(false),
 });
 
@@ -206,10 +206,10 @@ export function createConcoursRouter(ctx: AppContext): Router {
     if (!concours) throw ApiError.notFound('Concours non trouvé');
 
     const data = req.body;
-    const equipeId = `equipe-${concours.nbEquipesInscrites + 1}`;
+    const equipeId = crypto.randomUUID();
     const equipe = new Equipe(equipeId, data.joueurs, data.club, data.nomEquipe);
 
-    const inscriptionId = `inscription-${concours.nbEquipesInscrites + 1}`;
+    const inscriptionId = crypto.randomUUID();
     const inscription = new Inscription(inscriptionId, concours.id, equipe, new Date(), undefined, data.teteDeSerie);
 
     concours.inscrireEquipe(inscription);
@@ -221,6 +221,43 @@ export function createConcoursRouter(ctx: AppContext): Router {
       equipeNom: data.nomEquipe,
       nbInscrites: concours.nbEquipesInscrites,
     });
+  }));
+
+  // PATCH /:id/inscriptions/:inscriptionId — Modifier une équipe inscrite
+  router.patch('/:id/inscriptions/:inscriptionId', protect, validateBody(inscrireEquipeSchema), asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+
+    const inscriptionId = param(req.params.inscriptionId);
+    const inscription = concours.inscriptionsActives.find((i) => i.id === inscriptionId);
+    if (!inscription) throw ApiError.notFound('Inscription active non trouvée');
+
+    const data = req.body;
+    const equipe = new Equipe(
+      inscription.equipeId,
+      data.joueurs,
+      data.club,
+      data.nomEquipe,
+      inscription.equipe.numero,
+    );
+    concours.modifierInscription(inscriptionId, equipe, data.teteDeSerie);
+    await ctx.concoursRepository.save(concours);
+
+    res.json({
+      inscriptionId,
+      equipeId: equipe.id,
+      nomEquipe: equipe.nom,
+    });
+  }));
+
+  // DELETE /:id/inscriptions/:inscriptionId — Annuler une inscription
+  router.delete('/:id/inscriptions/:inscriptionId', protect, asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+
+    concours.annulerInscription(param(req.params.inscriptionId));
+    await ctx.concoursRepository.save(concours);
+    res.status(204).end();
   }));
 
   // POST /:id/terminer — Terminer manuellement un concours EN_COURS
