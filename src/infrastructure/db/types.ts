@@ -122,6 +122,8 @@ export interface TerrainData {
   numero: number;
   nom: string;
   disponible: boolean;
+  actif?: boolean;
+  occupe?: boolean;
   type: string;
 }
 

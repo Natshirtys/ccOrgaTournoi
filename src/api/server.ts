@@ -16,7 +16,9 @@ export function createApp(context: AppContext): express.Express {
     origin: process.env.ALLOWED_ORIGIN ?? true, // true = mirror Origin en dev, restreindre via ALLOWED_ORIGIN en prod
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   }));
-  app.use(express.json({ limit: '10kb' }));
+  // Une sauvegarde complète peut contenir tous les tours et matchs d'un concours.
+  // La limite reste bornée afin de ne pas accepter de charges arbitrairement volumineuses.
+  app.use(express.json({ limit: '2mb' }));
 
   // Parse JWT silencieusement (no-op si authService absent)
   app.use(createAuthenticateMiddleware(context.authService ?? null));

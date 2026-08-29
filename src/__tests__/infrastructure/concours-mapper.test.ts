@@ -171,6 +171,22 @@ describe('concours-mapper', () => {
       expect(t1.nom).toBe('Terrain 1');
     });
 
+    it('conserve séparément les états hors service et occupé des terrains', () => {
+      const original = buildConcours();
+      original.definirDisponibiliteTerrain('t1', false);
+
+      const restored = deserialize(serialize(original));
+      const horsService = restored.terrains.find(t => t.id === 't1')!;
+      const occupe = restored.terrains.find(t => t.id === 't2')!;
+
+      expect(horsService.actif).toBe(false);
+      expect(horsService.occupe).toBe(false);
+      expect(horsService.disponible).toBe(false);
+      expect(occupe.actif).toBe(true);
+      expect(occupe.occupe).toBe(true);
+      expect(occupe.disponible).toBe(false);
+    });
+
     it('reconstruit les inscriptions (statut, teteDeSerie, equipe)', () => {
       const original = buildConcours();
       const restored = deserialize(serialize(original));

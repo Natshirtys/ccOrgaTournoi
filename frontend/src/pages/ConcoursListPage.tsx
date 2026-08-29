@@ -4,6 +4,7 @@ import { fetchConcours, createConcours, ouvrirInscriptions, archiverConcours, su
 import { ConcoursTable } from '@/components/concours/ConcoursTable';
 import { ArchivesTab } from '@/components/concours/ArchivesTab';
 import { CreateConcoursDialog } from '@/components/concours/CreateConcoursDialog';
+import { ImportConcoursDialog } from '@/components/concours/ImportConcoursDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/auth/AuthContext';
 import type { CreateConcoursPayload } from '@/types/concours';
@@ -84,10 +85,13 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
           </div>
         </div>
         {isAuthenticated && (
-          <CreateConcoursDialog
-            onSubmit={(payload) => createMutation.mutateAsync(payload)}
-            isPending={createMutation.isPending}
-          />
+          <div className="flex flex-wrap justify-end gap-2">
+            <ImportConcoursDialog />
+            <CreateConcoursDialog
+              onSubmit={(payload) => createMutation.mutateAsync(payload)}
+              isPending={createMutation.isPending}
+            />
+          </div>
         )}
       </div>
 

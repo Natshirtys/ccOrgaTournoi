@@ -96,7 +96,14 @@ export function createMatchsRouter(ctx: AppContext): Router {
   router.post('/:id/matchs/:matchId/demarrer', protect, asyncHandler(async (req, res) => {
     const { concours, match } = await findMatch(ctx, param(req.params.id), param(req.params.matchId));
 
+    const terrain = match.terrainId
+      ? concours.terrains.find(t => t.id === match.terrainId)
+      : undefined;
+    if (terrain && !terrain.disponible) {
+      throw ApiError.badRequest(`Le terrain ${terrain.nom} est indisponible`);
+    }
     match.demarrer();
+    if (terrain) terrain.occuper();
     await ctx.concoursRepository.save(concours);
 
     res.json({ matchId: match.id, statut: match.statut });

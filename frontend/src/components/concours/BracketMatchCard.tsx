@@ -5,6 +5,7 @@ import { SaisirScoreDialog } from './SaisirScoreDialog';
 import { CorrigerScoreDialog } from './CorrigerScoreDialog';
 import { demarrerMatch, assignerTerrain } from '@/api/matchs';
 import type { MatchDto, TerrainDto } from '@/types/concours';
+import { ActionError } from '@/components/ui/action-error';
 
 interface BracketMatchCardProps {
   match: MatchDto;
@@ -127,7 +128,9 @@ export function BracketMatchCard({
   });
 
   const nomA = equipeLookup.get(match.equipeAId) ?? 'À déterminer';
-  const nomB = equipeLookup.get(match.equipeBId) ?? 'À déterminer';
+  const nomB = match.equipeBId
+    ? (equipeLookup.get(match.equipeBId) ?? 'À déterminer')
+    : 'Exempt';
   const score = match.score;
   const isTermine = match.statut === 'TERMINE' || match.statut === 'FORFAIT';
   const isEnCours = match.statut === 'EN_COURS';
@@ -209,12 +212,15 @@ export function BracketMatchCard({
         score={score?.equipeB}
         isWinner={!!bWins}
         isLoser={!!aWins}
-        isTbd={!equipeLookup.has(match.equipeBId)}
+        isTbd={match.equipeBId !== null && !equipeLookup.has(match.equipeBId)}
         tokens={tokens}
       />
 
       {/* Barre actions — hauteur fixe pour l'alignement du bracket */}
-      <div className={cn('flex items-center justify-center px-2 py-1.5 min-h-[2rem]', tokens.barBg)}>
+      <div className={cn('flex min-h-[2rem] items-center justify-center px-2 py-1.5', tokens.barBg)}>
+        <ActionError error={demarrerMutation.error ?? terrainMutation.error} compact />
+        {!demarrerMutation.error && !terrainMutation.error && (
+          <>
         {!readOnly && match.statut === 'PROGRAMME' && (
           <Button
             size="sm"
@@ -246,6 +252,8 @@ export function BracketMatchCard({
               currentScore={match.score}
             />
           )}
+          </>
+        )}
       </div>
     </div>
   );

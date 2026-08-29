@@ -61,12 +61,15 @@ function reconstructPools(matchs: MatchDto[]): PoolGroup[] {
     const m2 = tour1[i + 1];
 
     const equipeIds: string[] = [];
-    if (m1) equipeIds.push(m1.equipeAId, m1.equipeBId);
-    if (m2) equipeIds.push(m2.equipeAId, m2.equipeBId);
+    if (m1) equipeIds.push(m1.equipeAId, ...(m1.equipeBId ? [m1.equipeBId] : []));
+    if (m2) equipeIds.push(m2.equipeAId, ...(m2.equipeBId ? [m2.equipeBId] : []));
 
     const poolEquipeSet = new Set(equipeIds);
     const poolMatchs = matchs.filter(
-      (m) => poolEquipeSet.has(m.equipeAId) && poolEquipeSet.has(m.equipeBId),
+      (m) =>
+        m.equipeBId !== null &&
+        poolEquipeSet.has(m.equipeAId) &&
+        poolEquipeSet.has(m.equipeBId),
     );
 
     pools.push({ equipeIds, matchs: poolMatchs });
@@ -334,7 +337,7 @@ function TablePhaseView({
                     match={m}
                     concoursId={concoursId}
                     equipeANom={equipeLookup.get(m.equipeAId) ?? m.equipeAId}
-                    equipeBNom={equipeLookup.get(m.equipeBId) ?? m.equipeBId}
+                    equipeBNom={m.equipeBId ? (equipeLookup.get(m.equipeBId) ?? m.equipeBId) : 'Exempt'}
                     terrains={terrains}
                     readOnly={readOnly}
                   />

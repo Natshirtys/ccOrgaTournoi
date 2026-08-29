@@ -90,6 +90,16 @@ export class Concours extends AggregateRoot {
     this._terrains.push(terrain);
   }
 
+  definirDisponibiliteTerrain(terrainId: EntityId, actif: boolean): void {
+    this.verifierNonArchive();
+    const terrain = this._terrains.find(t => t.id === terrainId);
+    if (!terrain) {
+      throw new InvariantViolationError('Terrain non trouvé');
+    }
+    if (actif) terrain.remettreEnService();
+    else terrain.mettreHorsService();
+  }
+
   // --- Machine à états du concours ---
 
   ouvrirInscriptions(): void {

@@ -197,7 +197,7 @@ export function exportFeuillesDeMatch(
       const body = tour.matchs.map((m) => {
         const terrain = m.terrainId ? String(terrainLookup.get(m.terrainId) ?? '') : '';
         const equipeA = equipeLookup.get(m.equipeAId) ?? m.equipeAId;
-        const equipeB = equipeLookup.get(m.equipeBId) ?? m.equipeBId;
+        const equipeB = m.equipeBId ? (equipeLookup.get(m.equipeBId) ?? m.equipeBId) : 'Exempt';
         const scoreA = m.statut === 'PROGRAMME' ? '' : String(m.score?.equipeA ?? '');
         const scoreB = m.statut === 'PROGRAMME' ? '' : String(m.score?.equipeB ?? '');
         return [terrain, equipeA, equipeB, scoreA, scoreB];
@@ -491,7 +491,7 @@ export function exportArchivePdf(
       const body = tour.matchs.map((m) => {
         const terrain = m.terrainId ? String(terrainLookup.get(m.terrainId) ?? '') : '';
         const equipeA = equipeLookup.get(m.equipeAId) ?? m.equipeAId;
-        const equipeB = equipeLookup.get(m.equipeBId) ?? m.equipeBId;
+        const equipeB = m.equipeBId ? (equipeLookup.get(m.equipeBId) ?? m.equipeBId) : 'Exempt';
         const score =
           m.statut === 'FORFAIT'
             ? 'Forfait'

@@ -136,6 +136,8 @@ function serializeTerrain(t: Terrain): TerrainData {
     numero: t.numero,
     nom: t.nom,
     disponible: t.disponible,
+    actif: t.actif,
+    occupe: t.occupe,
     type: t.type,
   };
 }
@@ -287,7 +289,7 @@ function deserializePhase(d: PhaseData): Phase {
 }
 
 function deserializeTerrain(d: TerrainData): Terrain {
-  return new Terrain(d.id, d.concoursId, d.numero, d.nom, d.disponible, d.type);
+  return new Terrain(d.id, d.concoursId, d.numero, d.nom, d.disponible, d.type, d.actif, d.occupe);
 }
 
 function deserializeInscription(d: InscriptionData): Inscription {

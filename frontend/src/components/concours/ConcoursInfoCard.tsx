@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
 import { ActionError } from '@/components/ui/action-error';
-import { Info } from 'lucide-react';
+import { Download, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -23,7 +23,9 @@ import {
   lancerTirage,
   genererTourSuivant,
   terminerConcours,
+  exporterSauvegardeConcours,
 } from '@/api/concours';
+import { telechargerSauvegarde } from '@/lib/concours-backup';
 import type { ConcoursDetail, TypePhase } from '@/types/concours';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -221,13 +223,19 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
     onSuccess: invalidateAll,
   });
 
+  const sauvegardeMutation = useMutation({
+    mutationFn: () => exporterSauvegardeConcours(concours.id),
+    onSuccess: (sauvegarde) => telechargerSauvegarde(sauvegarde, concours.nom),
+  });
+
   const statut = concours.statut;
   const typePhase = concours.formule.typePhase ?? concours.phases[0]?.type;
   const actionError = ouvrirMutation.error
     ?? cloturerMutation.error
     ?? tirageMutation.error
     ?? tourSuivantMutation.error
-    ?? terminerMutation.error;
+    ?? terminerMutation.error
+    ?? sauvegardeMutation.error;
 
   return (
     <Card>
@@ -292,7 +300,19 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
             </p>
           </div>
         </div>
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
+          {isAuthenticated && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => sauvegardeMutation.mutate()}
+              disabled={sauvegardeMutation.isPending}
+            >
+              <Download className="h-4 w-4" />
+              {sauvegardeMutation.isPending ? 'Export…' : 'Sauvegarde JSON'}
+            </Button>
+          )}
           {isAuthenticated && statut === 'BROUILLON' && (
             <Button
               size="sm"

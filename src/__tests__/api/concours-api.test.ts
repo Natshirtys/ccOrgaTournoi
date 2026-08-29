@@ -422,4 +422,85 @@ describe('API Concours', () => {
     const archRes = await request(app, 'POST', `/api/v1/concours/${id}/archiver`);
     expect(archRes.status).toBe(409);
   });
+
+  it('PATCH permet de mettre un terrain hors service puis de le réactiver', async () => {
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'Terrains réglables',
+      dateDebut: '2026-09-01',
+      organisateurId: 'org-1',
+      typeEquipe: 'DOUBLETTE',
+      nbTerrains: 1,
+    });
+    const id = createRes.body.id as string;
+
+    const disableRes = await request(
+      app,
+      'PATCH',
+      `/api/v1/concours/${id}/terrains/terrain-1/disponibilite`,
+      { actif: false },
+    );
+    expect(disableRes.status).toBe(200);
+    expect(disableRes.body.actif).toBe(false);
+    expect(disableRes.body.disponible).toBe(false);
+
+    const enableRes = await request(
+      app,
+      'PATCH',
+      `/api/v1/concours/${id}/terrains/terrain-1/disponibilite`,
+      { actif: true },
+    );
+    expect(enableRes.status).toBe(200);
+    expect(enableRes.body.actif).toBe(true);
+    expect(enableRes.body.disponible).toBe(true);
+  });
+
+  it('exporte puis réimporte une sauvegarde JSON complète', async () => {
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'Concours sauvegardé',
+      dateDebut: '2026-09-01',
+      lieu: 'Lyon',
+      organisateurId: 'org-1',
+      typeEquipe: 'DOUBLETTE',
+      nbTerrains: 2,
+    });
+    const id = createRes.body.id as string;
+
+    const exportRes = await request(app, 'GET', `/api/v1/concours/${id}/sauvegarde`);
+    expect(exportRes.status).toBe(200);
+    expect(exportRes.body.version).toBe(1);
+
+    const conflictRes = await request(app, 'POST', '/api/v1/concours/importer', {
+      sauvegarde: exportRes.body,
+      remplacer: false,
+    });
+    expect(conflictRes.status).toBe(409);
+
+    const importRes = await request(app, 'POST', '/api/v1/concours/importer', {
+      sauvegarde: exportRes.body,
+      remplacer: true,
+    });
+    expect(importRes.status).toBe(200);
+    expect(importRes.body.id).toBe(id);
+    expect(importRes.body.remplace).toBe(true);
+
+    const detailRes = await request(app, 'GET', `/api/v1/concours/${id}`);
+    expect(detailRes.status).toBe(200);
+    expect(detailRes.body.nom).toBe('Concours sauvegardé');
+    expect(detailRes.body.lieu).toBe('Lyon');
+    expect(detailRes.body.nbTerrains).toBe(2);
+  });
+
+  it('refuse une sauvegarde JSON incompatible', async () => {
+    const res = await request(app, 'POST', '/api/v1/concours/importer', {
+      sauvegarde: {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        concours: { id: 'incomplet' },
+      },
+      remplacer: false,
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/invalide/i);
+  });
 });

@@ -5,6 +5,8 @@ import type {
   CreateConcoursPayload,
   InscrireEquipePayload,
   LancerTiragePayload,
+  ImportConcoursResult,
+  SauvegardeConcours,
 } from '../types/concours';
 
 export function fetchConcours(): Promise<{ data: ConcoursSummary[] }> {
@@ -83,6 +85,31 @@ export function modifierVisibiliteConcours(id: string, estPublic: boolean): Prom
   });
 }
 
+export function modifierDisponibiliteTerrain(
+  concoursId: string,
+  terrainId: string,
+  actif: boolean,
+): Promise<{ actif: boolean; occupe: boolean; disponible: boolean }> {
+  return apiFetch(`/concours/${concoursId}/terrains/${terrainId}/disponibilite`, {
+    method: 'PATCH',
+    body: JSON.stringify({ actif }),
+  });
+}
+
 export function supprimerConcours(id: string): Promise<void> {
   return apiFetch(`/concours/${id}`, { method: 'DELETE' });
+}
+
+export function exporterSauvegardeConcours(id: string): Promise<SauvegardeConcours> {
+  return apiFetch(`/concours/${id}/sauvegarde`);
+}
+
+export function importerSauvegardeConcours(
+  sauvegarde: SauvegardeConcours,
+  remplacer: boolean,
+): Promise<ImportConcoursResult> {
+  return apiFetch('/concours/importer', {
+    method: 'POST',
+    body: JSON.stringify({ sauvegarde, remplacer }),
+  });
 }

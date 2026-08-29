@@ -69,7 +69,7 @@ function computeResume(
         segments.push({ key: SEG_POULES, label: 'Phase de poules' });
       }
       for (const m of phaseMatchs) {
-        for (const id of [m.equipeAId, m.equipeBId]) {
+        for (const id of [m.equipeAId, m.equipeBId].filter((id): id is string => id !== null)) {
           if (!teamSegWins.has(id)) teamSegWins.set(id, {});
           if (teamSegWins.get(id)![SEG_POULES] === undefined) {
             teamSegWins.get(id)![SEG_POULES] = 0;
@@ -79,7 +79,7 @@ function computeResume(
         if (m.score.equipeA > m.score.equipeB) {
           teamSegWins.get(m.equipeAId)![SEG_POULES] =
             (teamSegWins.get(m.equipeAId)![SEG_POULES] ?? 0) + 1;
-        } else if (m.score.equipeB > m.score.equipeA) {
+        } else if (m.score.equipeB > m.score.equipeA && m.equipeBId) {
           teamSegWins.get(m.equipeBId)![SEG_POULES] =
             (teamSegWins.get(m.equipeBId)![SEG_POULES] ?? 0) + 1;
         }
@@ -90,7 +90,7 @@ function computeResume(
         segments.push({ key: SEG_CONSOLANTE, label: 'Consolante' });
       }
       for (const m of phaseMatchs) {
-        for (const id of [m.equipeAId, m.equipeBId]) {
+        for (const id of [m.equipeAId, m.equipeBId].filter((id): id is string => id !== null)) {
           if (!teamSegWins.has(id)) teamSegWins.set(id, {});
           if (teamSegWins.get(id)![SEG_CONSOLANTE] === undefined) {
             teamSegWins.get(id)![SEG_CONSOLANTE] = 0;
@@ -100,7 +100,7 @@ function computeResume(
         if (m.score.equipeA > m.score.equipeB) {
           teamSegWins.get(m.equipeAId)![SEG_CONSOLANTE] =
             (teamSegWins.get(m.equipeAId)![SEG_CONSOLANTE] ?? 0) + 1;
-        } else if (m.score.equipeB > m.score.equipeA) {
+        } else if (m.score.equipeB > m.score.equipeA && m.equipeBId) {
           teamSegWins.get(m.equipeBId)![SEG_CONSOLANTE] =
             (teamSegWins.get(m.equipeBId)![SEG_CONSOLANTE] ?? 0) + 1;
         }
@@ -112,7 +112,7 @@ function computeResume(
       segments.push({ key: segKey, label });
 
       for (const m of phaseMatchs) {
-        for (const id of [m.equipeAId, m.equipeBId]) {
+        for (const id of [m.equipeAId, m.equipeBId].filter((id): id is string => id !== null)) {
           if (!teamSegWins.has(id)) teamSegWins.set(id, {});
           if (teamSegWins.get(id)![segKey] === undefined) {
             teamSegWins.get(id)![segKey] = 0;
@@ -122,7 +122,7 @@ function computeResume(
         if (m.score.equipeA > m.score.equipeB) {
           teamSegWins.get(m.equipeAId)![segKey] =
             (teamSegWins.get(m.equipeAId)![segKey] ?? 0) + 1;
-        } else if (m.score.equipeB > m.score.equipeA) {
+        } else if (m.score.equipeB > m.score.equipeA && m.equipeBId) {
           teamSegWins.get(m.equipeBId)![segKey] =
             (teamSegWins.get(m.equipeBId)![segKey] ?? 0) + 1;
         }

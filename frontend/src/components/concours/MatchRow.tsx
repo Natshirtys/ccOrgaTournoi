@@ -8,6 +8,7 @@ import { CorrigerScoreDialog } from './CorrigerScoreDialog';
 import { TerrainBadge } from './TerrainBadge';
 import { demarrerMatch, declarerForfait } from '@/api/matchs';
 import type { MatchDto, TerrainDto } from '@/types/concours';
+import { ActionError } from '@/components/ui/action-error';
 
 const STATUT_MATCH_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   PROGRAMME: { label: 'Programmé', variant: 'outline' },
@@ -138,7 +139,10 @@ export function MatchRow({ match, concoursId, equipeANom, equipeBNom, terrains =
         />
       </TableCell>
       <TableCell>
-        <Badge variant={statutConfig.variant}>{statutConfig.label}</Badge>
+        <div className="flex flex-col items-start gap-1">
+          <Badge variant={statutConfig.variant}>{statutConfig.label}</Badge>
+          <ActionError error={demarrerMutation.error ?? forfaitMutation.error} compact />
+        </div>
       </TableCell>
     </TableRow>
   );

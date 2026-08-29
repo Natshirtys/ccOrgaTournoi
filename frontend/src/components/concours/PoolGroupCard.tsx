@@ -9,6 +9,7 @@ import { CorrigerScoreDialog } from './CorrigerScoreDialog';
 import { TerrainBadge } from './TerrainBadge';
 import { demarrerMatch } from '@/api/matchs';
 import type { MatchDto, TerrainDto } from '@/types/concours';
+import { ActionError } from '@/components/ui/action-error';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
@@ -72,7 +73,7 @@ function computeClassement(
     if (!m.score) continue;
 
     const statsA = statsMap.get(m.equipeAId);
-    const statsB = statsMap.get(m.equipeBId);
+    const statsB = m.equipeBId ? statsMap.get(m.equipeBId) : undefined;
     if (!statsA || !statsB) continue;
 
     statsA.pointsMarques += m.score.equipeA;
@@ -138,6 +139,9 @@ function PoolMatchActions({
   if (readOnly) return null;
 
   if (match.statut === 'PROGRAMME') {
+    if (demarrerMutation.error) {
+      return <ActionError error={demarrerMutation.error} compact />;
+    }
     return (
       <Button
         size="sm"
@@ -319,7 +323,9 @@ export function PoolGroupCard({
               <div className="space-y-1.5">
                 {tourMatchs.map((m) => {
                   const nomA = equipeLookup.get(m.equipeAId) ?? m.equipeAId;
-                  const nomB = equipeLookup.get(m.equipeBId) ?? m.equipeBId;
+                  const nomB = m.equipeBId
+                    ? (equipeLookup.get(m.equipeBId) ?? m.equipeBId)
+                    : 'Exempt';
                   const score = m.score;
                   const isTermine = m.statut === 'TERMINE' || m.statut === 'FORFAIT';
                   const isEnCours = m.statut === 'EN_COURS';

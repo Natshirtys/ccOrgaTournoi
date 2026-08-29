@@ -19,6 +19,8 @@ import { PoolPhaseStrategy } from '../../engine/strategies/phase/pool-phase-stra
 import { RoundRobinPoolStrategy } from '../../engine/strategies/phase/round-robin-pool-strategy.js';
 import { SingleEliminationStrategy } from '../../engine/strategies/phase/single-elimination-strategy.js';
 import { SwissSystemStrategy } from '../../engine/strategies/phase/swiss-system-strategy.js';
+import { deserialize, serialize } from '../../infrastructure/db/concours-mapper.js';
+import type { ConcoursData } from '../../infrastructure/db/types.js';
 
 
 // ─── Schemas Zod ────────────────────────────────────────────────────────────
@@ -56,12 +58,25 @@ const ajouterTerrainSchema = z.object({
   type: z.string().default('standard'),
 });
 
+const modifierDisponibiliteTerrainSchema = z.object({
+  actif: z.boolean(),
+});
+
 const lancerTirageSchema = z.object({
   nbPoules: z.number().int().positive().optional(),
 });
 
 const modifierVisibiliteSchema = z.object({
   estPublic: z.boolean(),
+});
+
+const importerSauvegardeSchema = z.object({
+  sauvegarde: z.object({
+    version: z.literal(1),
+    exportedAt: z.string().datetime(),
+    concours: z.unknown(),
+  }),
+  remplacer: z.boolean().default(false),
 });
 
 // ─── Helper ─────────────────────────────────────────────────────────────────
@@ -123,7 +138,8 @@ export function createConcoursRouter(ctx: AppContext): Router {
     res.json({
       ...concoursToJson(concours),
       terrains: concours.terrains.map((t) => ({
-        id: t.id, numero: t.numero, nom: t.nom, disponible: t.disponible,
+        id: t.id, numero: t.numero, nom: t.nom,
+        actif: t.actif, occupe: t.occupe, disponible: t.disponible,
       })),
       inscriptions: concours.inscriptionsActives.map((i) => ({
         id: i.id, equipeId: i.equipeId, nomEquipe: i.equipe.nom,
@@ -137,6 +153,40 @@ export function createConcoursRouter(ctx: AppContext): Router {
         nbTours: p.tours.length,
         classement: p.classement ? p.classement.lignes : null,
       })),
+    });
+  }));
+
+  router.get('/:id/sauvegarde', protect, asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+
+    res.json({
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      concours: serialize(concours),
+    });
+  }));
+
+  router.post('/importer', protect, validateBody(importerSauvegardeSchema), asyncHandler(async (req, res) => {
+    const { sauvegarde, remplacer } = req.body as z.infer<typeof importerSauvegardeSchema>;
+    let concours: Concours;
+
+    try {
+      concours = deserialize(sauvegarde.concours as ConcoursData);
+    } catch {
+      throw ApiError.badRequest('Le fichier de sauvegarde est invalide ou incomplet');
+    }
+
+    const existant = await ctx.concoursRepository.findById(concours.id);
+    if (existant && !remplacer) {
+      throw ApiError.conflict('Un concours avec le même identifiant existe déjà');
+    }
+
+    await ctx.concoursRepository.save(concours);
+    res.status(existant ? 200 : 201).json({
+      id: concours.id,
+      nom: concours.nom,
+      remplace: Boolean(existant),
     });
   }));
 
@@ -208,6 +258,19 @@ export function createConcoursRouter(ctx: AppContext): Router {
     await ctx.concoursRepository.save(concours);
 
     res.status(201).json({ id: terrainId, numero: terrain.numero, nom: terrain.nom });
+  }));
+
+  // PATCH /:id/terrains/:terrainId/disponibilite — Mettre un terrain en/hors service
+  router.patch('/:id/terrains/:terrainId/disponibilite', protect, validateBody(modifierDisponibiliteTerrainSchema), asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+
+    const terrainId = param(req.params.terrainId);
+    concours.definirDisponibiliteTerrain(terrainId, req.body.actif);
+    await ctx.concoursRepository.save(concours);
+
+    const terrain = concours.terrains.find(t => t.id === terrainId)!;
+    res.json({ id: terrain.id, actif: terrain.actif, occupe: terrain.occupe, disponible: terrain.disponible });
   }));
 
   // POST /:id/inscriptions — Inscrire une équipe

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { BracketMatchCard } from './BracketMatchCard';
 import { genererTourSuivant } from '@/api/concours';
 import type { MatchDto, TerrainDto } from '@/types/concours';
+import { ActionError } from '@/components/ui/action-error';
 
 interface KnockoutBracketProps {
   matchs: MatchDto[];
@@ -156,7 +157,7 @@ export function KnockoutBracket({
 
       {/* Tour suivant button per bracket */}
       {!readOnly && canAdvance && phaseId && (
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
           <Button
             size="sm"
             variant={isConsolante ? 'outline' : 'secondary'}
@@ -169,6 +170,7 @@ export function KnockoutBracket({
               ? 'Génération...'
               : 'Générer le tour suivant'}
           </Button>
+          <ActionError error={tourSuivantMutation.error} compact />
         </div>
       )}
     </div>

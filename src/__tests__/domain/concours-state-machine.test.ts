@@ -301,4 +301,31 @@ describe('Terrains', () => {
     c.ajouterTerrain(new Terrain('t1', 'c1', 1, 'Terrain 1'));
     expect(() => c.ajouterTerrain(new Terrain('t2', 'c1', 1, 'Terrain 1 bis'))).toThrow(InvariantViolationError);
   });
+
+  it('peut mettre un terrain hors service puis le réactiver', () => {
+    const c = creerConcoursTest();
+    c.ajouterTerrain(new Terrain('t1', 'c1', 1, 'Terrain 1'));
+
+    c.definirDisponibiliteTerrain('t1', false);
+    expect(c.terrains[0].actif).toBe(false);
+    expect(c.terrains[0].disponible).toBe(false);
+
+    c.definirDisponibiliteTerrain('t1', true);
+    expect(c.terrains[0].actif).toBe(true);
+    expect(c.terrains[0].disponible).toBe(true);
+  });
+
+  it('ne rend pas disponible un terrain occupé lorsqu’il est réactivé', () => {
+    const c = creerConcoursTest();
+    const terrain = new Terrain('t1', 'c1', 1, 'Terrain 1');
+    c.ajouterTerrain(terrain);
+    terrain.occuper();
+
+    c.definirDisponibiliteTerrain('t1', false);
+    c.definirDisponibiliteTerrain('t1', true);
+
+    expect(terrain.actif).toBe(true);
+    expect(terrain.occupe).toBe(true);
+    expect(terrain.disponible).toBe(false);
+  });
 });
