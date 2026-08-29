@@ -69,13 +69,13 @@ export function KnockoutBracket({
   if (totalRounds === 0) return null;
 
   const isConsolante = variant === 'consolante';
-  const headerBg = isConsolante
-    ? 'bg-[var(--color-bracket-consolante-card)] text-[var(--color-bracket-consolante-fg)]'
-    : 'bg-[var(--color-bracket-bg)] text-[var(--color-bracket-line)]';
+  const headerClass = isConsolante
+    ? 'border-amber-500/35 text-amber-700 dark:text-amber-300'
+    : 'border-border/80 text-muted-foreground';
 
-  // Card height: top bar 24 + team A 40 + divider 1 + team B 40 + actions 32 ≈ 137px
-  const CARD_HEIGHT = 137;
-  const GAP = 16;
+  // Hauteur d'un match terminé avec l'action de correction placée dans l'en-tête.
+  const CARD_HEIGHT = 128;
+  const GAP = 20;
 
   // Check if the last round has all matches finished → can advance
   const lastRound = rounds[rounds.length - 1];
@@ -86,69 +86,67 @@ export function KnockoutBracket({
   const canAdvance = lastRoundComplete && lastRound.matchs.length > 1;
 
   return (
-    <div className="space-y-3">
-      <div className="overflow-x-auto pb-4">
+    <div className="space-y-4">
+      <div className="overflow-x-auto overflow-y-hidden pb-4">
         <div
           className="bracket-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${totalRounds}, minmax(200px, 1fr))`,
-            columnGap: '2.5rem',
-            minWidth: `${totalRounds * 240}px`,
+            gridTemplateColumns: `repeat(${totalRounds}, minmax(220px, 1fr))`,
+            columnGap: '3rem',
+            minWidth: `${totalRounds * 268}px`,
+            ['--bracket-connector-color' as string]: isConsolante
+              ? 'var(--bracket-consolante-line)'
+              : 'var(--border)',
           }}
         >
-          {/* Column headers */}
-          {rounds.map(({ tourNum, nom }, idx) => {
-            const roundsFromEnd = totalRounds - idx;
+          {rounds.map(({ tourNum, nom, matchs: roundMatchs }, colIdx) => {
+            const roundsFromEnd = totalRounds - colIdx;
             const displayName = nom ?? getFallbackRoundName(roundsFromEnd, totalRounds);
-            return (
-              <div
-                key={`header-${tourNum}`}
-                className={`text-center text-sm font-bold uppercase tracking-wide
-                           rounded-t-lg py-2 ${headerBg}`}
-              >
-                {displayName}
-              </div>
-            );
-          })}
-
-          {/* Match columns */}
-          {rounds.map(({ tourNum, matchs: roundMatchs }, colIdx) => {
             // Calculate vertical padding to center-align with previous round
             const paddingTop = colIdx === 0 ? 0 : (CARD_HEIGHT + GAP) * (Math.pow(2, colIdx) - 1) / 2;
 
             return (
               <div
-                key={`col-${tourNum}`}
-                className="flex flex-col relative"
-                style={{
-                  gap: `${GAP + (CARD_HEIGHT + GAP) * (Math.pow(2, colIdx) - 1)}px`,
-                  paddingTop: `${paddingTop}px`,
-                }}
+                key={tourNum}
+                className="bracket-round-column relative min-w-0"
               >
-                {roundMatchs.map((m, matchIdx) => (
-                  <div key={m.id} className="relative bracket-match-wrapper">
-                    <BracketMatchCard
-                      match={m}
-                      concoursId={concoursId}
-                      equipeLookup={equipeLookup}
-                      variant={variant}
-                      terrains={terrains}
-                      readOnly={readOnly}
-                    />
-                    {/* Connector: horizontal line going right */}
-                    {colIdx < totalRounds - 1 && (
-                      <div
-                        className="bracket-connector"
-                        data-position={matchIdx % 2 === 0 ? 'top' : 'bottom'}
-                        style={{
-                          ['--connector-height' as string]:
-                            `${(CARD_HEIGHT + GAP + (CARD_HEIGHT + GAP) * (Math.pow(2, colIdx) - 1)) / 2}px`,
-                        }}
+                <div
+                  className={`border-b px-1 pb-2 text-left text-xs font-medium uppercase tracking-[0.12em]
+                             ${headerClass}`}
+                >
+                  {displayName}
+                </div>
+                <div
+                  className="bracket-round-matches relative flex flex-col"
+                  style={{
+                    gap: `${GAP + (CARD_HEIGHT + GAP) * (Math.pow(2, colIdx) - 1)}px`,
+                    paddingTop: `${paddingTop}px`,
+                  }}
+                >
+                  {roundMatchs.map((m, matchIdx) => (
+                    <div key={m.id} className="relative bracket-match-wrapper">
+                      <BracketMatchCard
+                        match={m}
+                        concoursId={concoursId}
+                        equipeLookup={equipeLookup}
+                        variant={variant}
+                        terrains={terrains}
+                        readOnly={readOnly}
                       />
-                    )}
-                  </div>
-                ))}
+                      {colIdx < totalRounds - 1 && (
+                        <div
+                          className="bracket-connector"
+                          data-position={matchIdx % 2 === 0 ? 'top' : 'bottom'}
+                          style={{
+                            ['--connector-height' as string]:
+                              `${(CARD_HEIGHT + GAP + (CARD_HEIGHT + GAP) * (Math.pow(2, colIdx) - 1)) / 2}px`,
+                          }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             );
           })}

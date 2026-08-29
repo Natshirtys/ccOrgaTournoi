@@ -152,11 +152,11 @@
 
 .bracket-connector {
   position: absolute;
-  right: -2.5rem;
+  right: -3rem;
   top: 50%;
-  width: 2.5rem;
-  height: 2px;
-  background-color: var(--bracket-line);
+  width: 3rem;
+  height: 1px;
+  background-color: var(--bracket-connector-color, var(--border));
   pointer-events: none;
 }
 
@@ -165,9 +165,9 @@
   position: absolute;
   right: 0;
   top: 0;
-  width: 2px;
+  width: 1px;
   height: var(--connector-height, 3rem);
-  background-color: var(--bracket-line);
+  background-color: var(--bracket-connector-color, var(--border));
 }
 
 .bracket-connector[data-position="bottom"]::after {
@@ -175,7 +175,34 @@
   position: absolute;
   right: 0;
   bottom: 0;
-  width: 2px;
+  width: 1px;
   height: var(--connector-height, 3rem);
-  background-color: var(--bracket-line);
+  background-color: var(--bracket-connector-color, var(--border));
+}
+
+@media (max-width: 639px) {
+  .bracket-grid {
+    display: flex !important;
+    flex-direction: column;
+    gap: 1rem !important;
+    min-width: 0 !important;
+  }
+
+  .bracket-round-column:not(:last-child)::after {
+    background-color: var(--bracket-connector-color, var(--border));
+    content: "";
+    display: block;
+    height: 1.25rem;
+    margin: 0.75rem auto -0.75rem;
+    width: 1px;
+  }
+
+  .bracket-round-matches {
+    gap: 0.75rem !important;
+    padding-top: 0.75rem !important;
+  }
+
+  .bracket-connector {
+    display: none;
+  }
 }

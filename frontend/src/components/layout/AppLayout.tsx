@@ -3,6 +3,7 @@ import { ModeToggle } from '@/components/mode-toggle';
 import { LoginDialog } from '@/components/auth/LoginDialog';
 import { useAuth } from '@/auth/AuthContext';
 import { Button } from '@/components/ui/button';
+import { LogIn, LogOut, Mail } from 'lucide-react';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { isAuthenticated, user, logout } = useAuth();
@@ -21,43 +22,56 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-primary text-primary-foreground shadow-md">
-        <div className="flex items-center gap-2 px-3 py-3 sm:gap-3 sm:px-6 lg:px-8">
-          <img
-            src="/ibm-logo-blanc.png"
-            alt="IBM"
-            className="h-10 w-10 object-contain"
-          />
-          <div className="flex-1">
-            <h1 className="text-lg font-bold tracking-wide">
-              ccOrgaTournoi
+      <header className="relative overflow-hidden border-b border-white/10 bg-[#071a2e] text-white shadow-[0_10px_30px_rgba(2,12,27,0.22)]">
+        <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#3ba6f2] via-[#77c8ff] to-[#3ba6f2]" />
+        <div aria-hidden="true" className="absolute -right-24 -top-24 size-64 rounded-full bg-[#3ba6f2]/10 blur-3xl" />
+
+        <div className="relative flex min-h-[76px] items-center gap-2 px-3 py-2 sm:min-h-[84px] sm:gap-4 sm:px-6 lg:px-8">
+          <div className="grid size-14 shrink-0 place-items-center rounded-2xl border border-white/15 bg-white/[0.07] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] sm:size-16">
+            <img
+              src="/ibm-logo-blanc.png"
+              alt="Logo Indépendante Boule Magnet"
+              className="h-12 w-12 object-contain sm:h-14 sm:w-14"
+            />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-base font-bold tracking-[-0.02em] sm:text-xl">
+              <span className="sm:hidden">Boule Magnet</span>
+              <span className="hidden sm:inline">Indépendante Boule Magnet</span>
             </h1>
-            <p className="text-xs text-primary-foreground/70">
-              Indépendante Boule Magnet
+            <p className="mt-0.5 text-[11px] font-medium tracking-[0.12em] text-white/60 uppercase sm:text-xs">
+              Gestion des concours
             </p>
           </div>
 
           {isAuthenticated ? (
-            <div className="flex items-center gap-2 sm:gap-3">
-              <span className="hidden sm:inline text-xs text-primary-foreground/80">{user?.email}</span>
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+              <span className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-xs text-white/70 xl:flex">
+                <Mail className="size-3.5 text-[#77c8ff]" />
+                {user?.email}
+              </span>
               <Button
-                variant="secondary"
+                variant="ghost"
                 size="sm"
                 onClick={logout}
                 aria-label="Déconnexion"
+                className="h-10 border border-white/15 bg-white/[0.08] px-3 text-white shadow-sm hover:bg-white/15 hover:text-white"
               >
-                <span className="hidden sm:inline">Déconnexion</span>
-                <span aria-hidden="true" className="sm:hidden">✕</span>
+                <LogOut className="size-4" />
+                <span className="hidden md:inline">Déconnexion</span>
               </Button>
             </div>
           ) : (
             <Button
-              variant="secondary"
+              variant="ghost"
               size="sm"
               onClick={() => setLoginOpen(true)}
+              className="h-10 border border-white/15 bg-white/[0.08] px-3 text-white shadow-sm hover:bg-white/15 hover:text-white"
             >
+              <LogIn className="size-4" />
               <span className="hidden sm:inline">Connexion admin</span>
-              <span className="sm:hidden">Admin</span>
+              <span className="hidden min-[360px]:inline sm:hidden">Admin</span>
             </Button>
           )}
 

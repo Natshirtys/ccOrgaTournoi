@@ -25,17 +25,17 @@ const PHASE_LABELS: Record<string, string> = {
   SYSTEME_SUISSE: 'Système Suisse',
 };
 
-// Couleurs des headers par type de phase et nom
+// Un fin accent conserve l'identité A/B/C sans transformer le titre en bandeau massif.
 function getPhaseHeaderClass(phaseType: string, phaseNom?: string): string {
-  if (phaseType === 'CHAMPIONNAT') return 'bg-muted';
-  if (phaseType === 'CONSOLANTE') return 'bg-amber-600 text-white';
+  if (phaseType === 'CHAMPIONNAT') return 'border-l-primary bg-primary/[0.04]';
+  if (phaseType === 'CONSOLANTE') return 'border-l-amber-500 bg-amber-500/[0.06]';
   if (phaseType === 'ELIMINATION_SIMPLE') {
-    if (phaseNom === 'Championnat A') return 'bg-green-700 text-white';
-    if (phaseNom === 'Championnat B') return 'bg-blue-700 text-white';
-    if (phaseNom === 'Championnat C') return 'bg-orange-600 text-white';
-    return 'bg-[var(--color-bracket-bg)] text-white';
+    if (phaseNom === 'Championnat A') return 'border-l-emerald-500 bg-emerald-500/[0.06]';
+    if (phaseNom === 'Championnat B') return 'border-l-blue-500 bg-blue-500/[0.06]';
+    if (phaseNom === 'Championnat C') return 'border-l-orange-500 bg-orange-500/[0.06]';
+    return 'border-l-primary bg-primary/[0.04]';
   }
-  return 'bg-muted';
+  return 'border-l-muted-foreground bg-muted/40';
 }
 
 interface MatchsTabProps {
@@ -203,8 +203,13 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
         return (
           <div key={phaseId} className="space-y-4">
             {hasMultiplePhases && (
-              <div className={`rounded-lg px-4 py-2 ${headerClass}`}>
-                <h3 className="text-lg font-bold tracking-wide uppercase">
+              <div className={`rounded-xl border border-l-4 border-border/70 px-4 py-3 shadow-sm ${headerClass}`}>
+                <p className="mb-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                  {phaseType === 'ELIMINATION_SIMPLE' || phaseType === 'CONSOLANTE'
+                    ? 'Phase finale'
+                    : 'Phase de compétition'}
+                </p>
+                <h3 className="text-base font-semibold tracking-tight text-foreground">
                   {displayLabel}
                 </h3>
               </div>

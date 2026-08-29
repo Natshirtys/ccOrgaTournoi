@@ -16,35 +16,35 @@ interface BracketMatchCardProps {
   readOnly?: boolean;
 }
 
-// Tokens sémantiques par variant — respectent light/dark via CSS variables
+// Accents par tableau, sur une surface neutre commune pour garder l'arbre lisible.
 const TOKENS = {
   principal: {
-    cardBg:    'bg-bracket-bg border-bracket-card',
-    barBg:     'bg-black/20',
-    lineColor: 'text-bracket-line',
-    fg:        'text-bracket-fg',
-    fgMuted:   'text-bracket-fg/40',
-    fgDim:     'text-bracket-fg/30',
-    fgScore:   'text-bracket-fg/45',
-    divider:   'border-bracket-fg/15',
-    winner:    'text-emerald-600',
-    winnerDot: 'bg-emerald-500',
-    winnerBg:  'bg-emerald-500/15',
-    enCours:   'text-emerald-600',
+    cardBg:    'bg-card border-border/80',
+    barBg:     'bg-muted/35',
+    lineColor: 'text-primary',
+    fg:        'text-card-foreground',
+    fgMuted:   'text-muted-foreground',
+    fgDim:     'text-muted-foreground/70',
+    fgScore:   'text-muted-foreground',
+    divider:   'border-border/70',
+    winner:    'text-emerald-700 dark:text-emerald-400',
+    winnerDot: 'border-emerald-500 bg-emerald-500',
+    winnerBg:  'bg-emerald-500/10',
+    enCours:   'text-emerald-700 dark:text-emerald-400',
   },
   consolante: {
-    cardBg:    'bg-bracket-consolante-bg border-bracket-consolante-card',
-    barBg:     'bg-black/25',
-    lineColor: 'text-bracket-consolante-line',
-    fg:        'text-[var(--color-bracket-consolante-fg)]',
-    fgMuted:   'text-[var(--color-bracket-consolante-fg)]/40',
-    fgDim:     'text-[var(--color-bracket-consolante-fg)]/30',
-    fgScore:   'text-[var(--color-bracket-consolante-fg)]/45',
-    divider:   'border-[var(--color-bracket-consolante-fg)]/15',
-    winner:    'text-emerald-600',
-    winnerDot: 'bg-emerald-500',
-    winnerBg:  'bg-emerald-500/15',
-    enCours:   'text-emerald-600',
+    cardBg:    'bg-card border-amber-500/25',
+    barBg:     'bg-amber-500/[0.06]',
+    lineColor: 'text-amber-700 dark:text-amber-300',
+    fg:        'text-card-foreground',
+    fgMuted:   'text-muted-foreground',
+    fgDim:     'text-muted-foreground/70',
+    fgScore:   'text-muted-foreground',
+    divider:   'border-border/70',
+    winner:    'text-emerald-700 dark:text-emerald-400',
+    winnerDot: 'border-emerald-500 bg-emerald-500',
+    winnerBg:  'bg-emerald-500/10',
+    enCours:   'text-emerald-700 dark:text-emerald-400',
   },
 } as const;
 
@@ -68,15 +68,15 @@ function TeamRow({
   return (
     <div
       className={cn(
-        'flex items-center gap-2 px-3 py-2.5 transition-colors',
+        'flex min-h-10 items-center gap-2.5 px-3 py-2 transition-colors',
         isWinner && tokens.winnerBg,
-        isLoser && 'opacity-35',
+        isLoser && 'opacity-55',
       )}
     >
       {/* Indicateur gagnant */}
       <span
         className={cn(
-          'h-2 w-2 shrink-0 rounded-full transition-colors',
+          'h-2 w-2 shrink-0 rounded-full border border-border transition-colors',
           isWinner ? tokens.winnerDot : 'bg-transparent',
         )}
       />
@@ -85,7 +85,7 @@ function TeamRow({
         className={cn(
           'flex-1 truncate text-sm',
           isTbd ? cn('italic', tokens.fgDim) : tokens.fg,
-          isWinner && 'font-semibold',
+          isWinner && 'font-medium',
         )}
       >
         {nom}
@@ -94,7 +94,7 @@ function TeamRow({
       {score !== undefined && (
         <span
           className={cn(
-            'shrink-0 font-mono font-black text-lg leading-none tabular-nums',
+            'shrink-0 text-lg font-semibold leading-none tabular-nums',
             isWinner ? tokens.winner : tokens.fgScore,
           )}
         >
@@ -141,12 +141,21 @@ export function BracketMatchCard({
   const tokens = TOKENS[variant];
   const canChangeTerrain =
     !readOnly && (match.statut === 'PROGRAMME' || match.statut === 'EN_COURS');
+  const canCorrectScore =
+    !readOnly && match.statut === 'TERMINE' && match.canEditScore && match.score;
+  const hasFooter =
+    demarrerMutation.error
+    || terrainMutation.error
+    || (!readOnly && (match.statut === 'PROGRAMME' || match.statut === 'EN_COURS'));
 
   return (
-    <div className={cn('bracket-match-card w-full overflow-hidden rounded-lg shadow-lg border', tokens.cardBg)}>
+    <div className={cn(
+      'bracket-match-card w-full overflow-hidden rounded-xl border shadow-sm transition-shadow hover:shadow-md',
+      tokens.cardBg,
+    )}>
 
       {/* Barre supérieure : terrain + statut */}
-      <div className={cn('flex items-center justify-between px-3 py-1.5', tokens.barBg)}>
+      <div className={cn('flex min-h-8 items-center justify-between gap-2 border-b px-3 py-1.5', tokens.divider, tokens.barBg)}>
         {/* Terrain */}
         {match.terrainNumero != null ? (
           canChangeTerrain && terrains.length > 0 ? (
@@ -182,15 +191,26 @@ export function BracketMatchCard({
         )}
 
         {/* Indicateur de statut */}
-        {isEnCours && (
-          <span className={cn('flex items-center gap-1 text-[10px] font-semibold', tokens.enCours)}>
-            <span className={cn('h-1.5 w-1.5 animate-pulse rounded-full', tokens.winnerDot)} />
-            En cours
-          </span>
-        )}
-        {isTermine && (
-          <span className={cn('text-[10px]', tokens.fgMuted)}>Terminé</span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {isEnCours && (
+            <span className={cn('flex items-center gap-1 text-[10px] font-semibold', tokens.enCours)}>
+              <span className={cn('h-1.5 w-1.5 animate-pulse rounded-full border-0', tokens.winnerDot)} />
+              En cours
+            </span>
+          )}
+          {isTermine && (
+            <span className={cn('text-[10px]', tokens.fgMuted)}>Terminé</span>
+          )}
+          {canCorrectScore && (
+            <CorrigerScoreDialog
+              concoursId={concoursId}
+              matchId={match.id}
+              equipeANom={nomA}
+              equipeBNom={nomB}
+              currentScore={match.score!}
+            />
+          )}
+        </div>
       </div>
 
       {/* Équipe A */}
@@ -216,8 +236,9 @@ export function BracketMatchCard({
         tokens={tokens}
       />
 
-      {/* Barre actions — hauteur fixe pour l'alignement du bracket */}
-      <div className={cn('flex min-h-[2rem] items-center justify-center px-2 py-1.5', tokens.barBg)}>
+      {/* Les matchs terminés restent compacts ; seules les actions utiles ouvrent un pied de carte. */}
+      {hasFooter && (
+      <div className={cn('flex min-h-9 items-center justify-center border-t px-2 py-1.5', tokens.divider, tokens.barBg)}>
         <ActionError error={demarrerMutation.error ?? terrainMutation.error} compact />
         {!demarrerMutation.error && !terrainMutation.error && (
           <>
@@ -240,21 +261,10 @@ export function BracketMatchCard({
             equipeBNom={nomB}
           />
         )}
-        {!readOnly &&
-          match.statut === 'TERMINE' &&
-          match.canEditScore &&
-          match.score && (
-            <CorrigerScoreDialog
-              concoursId={concoursId}
-              matchId={match.id}
-              equipeANom={nomA}
-              equipeBNom={nomB}
-              currentScore={match.score}
-            />
-          )}
           </>
         )}
       </div>
+      )}
     </div>
   );
 }
