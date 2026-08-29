@@ -30,6 +30,13 @@ const declarerForfaitSchema = z.object({
   equipeDeclarantForfaitId: z.string().min(1),
 });
 
+const demarrerMatchsSchema = z.object({
+  matchIds: z.array(z.string().min(1)).min(1).max(128).refine(
+    (ids) => new Set(ids).size === ids.length,
+    'La liste contient des matchs en double',
+  ),
+});
+
 // ─── Helper ─────────────────────────────────────────────────────────────────
 
 function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) {
@@ -88,6 +95,51 @@ export function createMatchsRouter(ctx: AppContext): Router {
     }
 
     res.json({ data: matchs });
+  }));
+
+  // POST /:id/matchs/demarrer-tous — Démarrer atomiquement les matchs prêts sélectionnés
+  router.post('/:id/matchs/demarrer-tous', protect, validateBody(demarrerMatchsSchema), asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+
+    const matchsParId = new Map<string, Match>();
+    for (const phase of concours.phases) {
+      for (const tour of phase.tours) {
+        for (const match of tour.matchs) matchsParId.set(match.id, match as Match);
+      }
+    }
+
+    const matchs = (req.body.matchIds as string[]).map((matchId) => {
+      const match = matchsParId.get(matchId);
+      if (!match) throw ApiError.notFound(`Match ${matchId} non trouvé`);
+      if (match.statut !== 'PROGRAMME') {
+        throw ApiError.conflict('Un des matchs sélectionnés a déjà commencé');
+      }
+      if (!match.equipeBId || !match.terrainId) {
+        throw ApiError.badRequest('Tous les matchs sélectionnés doivent avoir deux équipes et un terrain');
+      }
+      return match;
+    });
+
+    const terrainIds = matchs.map((match) => match.terrainId!);
+    if (new Set(terrainIds).size !== terrainIds.length) {
+      throw ApiError.conflict('Plusieurs matchs sont affectés au même terrain');
+    }
+
+    const terrains = terrainIds.map((terrainId) => {
+      const terrain = concours.terrains.find((item) => item.id === terrainId);
+      if (!terrain) throw ApiError.notFound(`Terrain ${terrainId} non trouvé`);
+      if (!terrain.disponible) {
+        throw ApiError.conflict(`Le terrain ${terrain.nom} n'est plus disponible`);
+      }
+      return terrain;
+    });
+
+    matchs.forEach((match) => match.demarrer());
+    terrains.forEach((terrain) => terrain.occuper());
+    await ctx.concoursRepository.save(concours);
+
+    res.json({ nbMatchsDemarres: matchs.length, matchIds: matchs.map((match) => match.id) });
   }));
 
   // POST /:id/matchs/:matchId/demarrer — Démarrer un match

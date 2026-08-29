@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SaisirScoreDialog } from './SaisirScoreDialog';
 import { CorrigerScoreDialog } from './CorrigerScoreDialog';
@@ -15,6 +16,7 @@ interface BracketMatchCardProps {
   variant?: 'principal' | 'consolante';
   terrains?: TerrainDto[];
   readOnly?: boolean;
+  prominentStart?: boolean;
 }
 
 // Accents par tableau, sur une surface neutre commune pour garder l'arbre lisible.
@@ -113,6 +115,7 @@ export function BracketMatchCard({
   variant = 'principal',
   terrains = [],
   readOnly = false,
+  prominentStart = false,
 }: BracketMatchCardProps) {
   const queryClient = useQueryClient();
 
@@ -201,16 +204,21 @@ export function BracketMatchCard({
           {isTermine && (
             <span className={cn('text-[10px]', tokens.fgMuted)}>Terminé</span>
           )}
-          {!readOnly && match.statut === 'PROGRAMME' && (
+          {!readOnly && match.statut === 'PROGRAMME' && !prominentStart && (
             <Button
               size="sm"
-              variant="ghost"
-              className="h-10 px-3 text-xs text-primary hover:bg-primary/10 hover:text-primary sm:h-7"
+              className="h-10 cursor-pointer gap-1.5 px-4 text-sm shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:h-8 sm:text-xs"
               onClick={() => demarrerMutation.mutate()}
               disabled={demarrerMutation.isPending}
             >
-              Démarrer
+              <Play className="h-3.5 w-3.5 fill-current" />
+              Démarrer ce match
             </Button>
+          )}
+          {!readOnly && match.statut === 'PROGRAMME' && prominentStart && (
+            <span className={cn('text-[10px] font-medium uppercase tracking-wide', tokens.fgMuted)}>
+              Prêt
+            </span>
           )}
           {!readOnly && match.statut === 'EN_COURS' && (
             <>
@@ -245,8 +253,21 @@ export function BracketMatchCard({
         tokens={tokens}
       />
 
-      {/* Séparateur */}
-      <div className={cn('border-t', tokens.divider)} />
+      {/* Action centrale très visible sur les tours denses encore à démarrer. */}
+      {!readOnly && match.statut === 'PROGRAMME' && prominentStart ? (
+        <div className={cn('border-y bg-primary/[0.04] px-3 py-2', tokens.divider)}>
+          <Button
+            className="h-10 w-full cursor-pointer gap-2 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0"
+            onClick={() => demarrerMutation.mutate()}
+            disabled={demarrerMutation.isPending}
+          >
+            <Play className="h-4 w-4 fill-current" />
+            {demarrerMutation.isPending ? 'Démarrage…' : 'Démarrer ce match'}
+          </Button>
+        </div>
+      ) : (
+        <div className={cn('border-t', tokens.divider)} />
+      )}
 
       {/* Équipe B */}
       <TeamRow

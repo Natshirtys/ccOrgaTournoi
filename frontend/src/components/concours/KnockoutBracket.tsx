@@ -136,6 +136,7 @@ export function KnockoutBracket({
                         variant={variant}
                         terrains={terrains}
                         readOnly={readOnly}
+                        prominentStart={isStandaloneDenseRound}
                       />
                       {colIdx < totalRounds - 1 && (
                         <div

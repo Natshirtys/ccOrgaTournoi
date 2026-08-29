@@ -610,6 +610,64 @@ describe('API Concours', () => {
     expect(correctionApresFinTourRes.body.error).toMatch(/tour est déjà terminé/i);
   });
 
+  it('démarre atomiquement tous les matchs prêts', async () => {
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'Concours avec départ groupé',
+      dateDebut: '2026-10-02',
+      organisateurId: 'org-1',
+      typeEquipe: 'DOUBLETTE',
+      nbEquipesMin: 4,
+      nbTerrains: 2,
+    });
+    const id = createRes.body.id as string;
+    await request(app, 'POST', `/api/v1/concours/${id}/ouvrir-inscriptions`);
+    for (let index = 1; index <= 4; index++) {
+      await request(app, 'POST', `/api/v1/concours/${id}/inscriptions`, {
+        nomEquipe: `Equipe départ ${index}`,
+      });
+    }
+    await request(app, 'POST', `/api/v1/concours/${id}/cloturer-inscriptions`);
+    await request(app, 'POST', `/api/v1/concours/${id}/tirage`, { nbPoules: 1 });
+
+    const matchsAvant = await request(app, 'GET', `/api/v1/concours/${id}/matchs`);
+    const matchIds = (matchsAvant.body.data as Array<Record<string, unknown>>)
+      .filter((match) => match.equipeBId !== null && match.terrainId !== null)
+      .map((match) => match.id as string);
+    expect(matchIds).toHaveLength(2);
+
+    const demarrageRes = await request(
+      app,
+      'POST',
+      `/api/v1/concours/${id}/matchs/demarrer-tous`,
+      { matchIds },
+    );
+    expect(demarrageRes.status).toBe(200);
+    expect(demarrageRes.body.nbMatchsDemarres).toBe(2);
+
+    const matchsApres = await request(app, 'GET', `/api/v1/concours/${id}/matchs`);
+    const matchsDemarres = (matchsApres.body.data as Array<Record<string, unknown>>)
+      .filter((match) => matchIds.includes(match.id as string));
+    expect(matchsDemarres.every((match) => match.statut === 'EN_COURS')).toBe(true);
+
+    const detail = await request(app, 'GET', `/api/v1/concours/${id}`);
+    expect((detail.body.terrains as Array<Record<string, unknown>>)
+      .every((terrain) => terrain.occupe === true)).toBe(true);
+
+    await request(app, 'POST', `/api/v1/concours/${id}/matchs/${matchIds[0]}/annuler-demarrage`);
+    const demarragePartielRes = await request(
+      app,
+      'POST',
+      `/api/v1/concours/${id}/matchs/demarrer-tous`,
+      { matchIds },
+    );
+    expect(demarragePartielRes.status).toBe(409);
+
+    const matchsApresRefus = await request(app, 'GET', `/api/v1/concours/${id}/matchs`);
+    const matchRemisEnAttente = (matchsApresRefus.body.data as Array<Record<string, unknown>>)
+      .find((match) => match.id === matchIds[0]);
+    expect(matchRemisEnAttente?.statut).toBe('PROGRAMME');
+  });
+
   it('annule la dernière saisie de score et restaure le terrain occupé', async () => {
     const createRes = await request(app, 'POST', '/api/v1/concours', {
       nom: 'Concours avec annulation',

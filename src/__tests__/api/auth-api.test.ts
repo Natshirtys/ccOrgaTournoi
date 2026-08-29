@@ -262,4 +262,14 @@ describe('Routes protégées — avec auth activée', () => {
     const res = await request(app, 'PATCH', '/api/v1/concours/inconnu/visibilite', { estPublic: false });
     expect(res.status).toBe(401);
   });
+
+  it('refuse de démarrer tous les matchs sans authentification', async () => {
+    const res = await request(
+      app,
+      'POST',
+      '/api/v1/concours/inconnu/matchs/demarrer-tous',
+      { matchIds: ['match-1'] },
+    );
+    expect(res.status).toBe(401);
+  });
 });

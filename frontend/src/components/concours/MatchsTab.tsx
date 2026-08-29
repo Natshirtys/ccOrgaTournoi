@@ -1,9 +1,20 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { FileText } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { FileText, Play } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/ui/action-error';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import {
   Table,
   TableBody,
@@ -14,7 +25,7 @@ import {
 import { MatchRow } from './MatchRow';
 import { PoolGroupCard } from './PoolGroupCard';
 import { KnockoutBracket } from './KnockoutBracket';
-import { fetchMatchs } from '@/api/matchs';
+import { demarrerTousLesMatchs, fetchMatchs } from '@/api/matchs';
 import type { ConcoursDetail, MatchDto, TerrainDto } from '@/types/concours';
 
 const PHASE_LABELS: Record<string, string> = {
@@ -79,12 +90,27 @@ function reconstructPools(matchs: MatchDto[]): PoolGroup[] {
 }
 
 export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
+  const queryClient = useQueryClient();
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<unknown>(null);
   const { data, isLoading } = useQuery({
     queryKey: ['concours', concours.id, 'matchs'],
     queryFn: () => fetchMatchs(concours.id),
     enabled: concours.statut === 'EN_COURS' || concours.statut === 'TERMINE' || concours.statut === 'ARCHIVE',
+  });
+  const allMatchs = data?.data ?? [];
+  const terrainsDisponibles = new Set(
+    concours.terrains.filter((terrain) => terrain.disponible).map((terrain) => terrain.id),
+  );
+  const matchsPrets = allMatchs.filter(
+    (match) => match.statut === 'PROGRAMME'
+      && match.equipeBId !== null
+      && match.terrainId !== null
+      && terrainsDisponibles.has(match.terrainId),
+  );
+  const demarrerTousMutation = useMutation({
+    mutationFn: () => demarrerTousLesMatchs(concours.id, matchsPrets.map((match) => match.id)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['concours', concours.id] }),
   });
 
   const equipeLookup = useMemo(() => {
@@ -162,7 +188,6 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
     return <p className="py-8 text-center text-muted-foreground">Aucun match.</p>;
   }
 
-  const allMatchs = data?.data ?? [];
   const hasMultiplePhases = matchsByPhaseAndTour.length > 1;
   const isRoundRobin = concours.phases.some((p) => p.type === 'CHAMPIONNAT');
 
@@ -181,7 +206,38 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {!readOnly && matchsPrets.length > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                className="h-11 w-full cursor-pointer gap-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg sm:w-auto"
+                disabled={demarrerTousMutation.isPending}
+              >
+                <Play className="h-4 w-4 fill-current" />
+                Tout démarrer
+                <span className="rounded-full bg-primary-foreground/15 px-2 py-0.5 text-xs tabular-nums">
+                  {matchsPrets.length}
+                </span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Démarrer tous les matchs prêts ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Les {matchsPrets.length} matchs ayant un terrain affecté passeront en cours en même temps.
+                  Vous pourrez remettre individuellement un match en attente tant qu’aucun score n’est saisi.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Conserver en attente</AlertDialogCancel>
+                <AlertDialogAction onClick={() => demarrerTousMutation.mutate()}>
+                  Démarrer les {matchsPrets.length} matchs
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -193,7 +249,7 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
           {isExporting ? 'Génération…' : 'Exporter feuilles de match'}
         </Button>
       </div>
-      <ActionError error={exportError} />
+      <ActionError error={demarrerTousMutation.error ?? exportError} />
       {matchsByPhaseAndTour.map(({ phaseId, phaseType, phaseNom, tours }) => {
         if (isRoundRobin && phaseType === 'CONSOLANTE') return null;
         const phaseData = matchsByPhase.get(phaseId);

@@ -22,6 +22,16 @@ export function annulerDemarrageMatch(concoursId: string, matchId: string): Prom
   });
 }
 
+export function demarrerTousLesMatchs(
+  concoursId: string,
+  matchIds: string[],
+): Promise<{ nbMatchsDemarres: number; matchIds: string[] }> {
+  return apiFetch(`/concours/${concoursId}/matchs/demarrer-tous`, {
+    method: 'POST',
+    body: JSON.stringify({ matchIds }),
+  });
+}
+
 export function saisirScore(
   concoursId: string,
   matchId: string,
