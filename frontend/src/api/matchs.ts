@@ -16,6 +16,12 @@ export function demarrerMatch(concoursId: string, matchId: string): Promise<void
   });
 }
 
+export function annulerDemarrageMatch(concoursId: string, matchId: string): Promise<void> {
+  return apiFetch(`/concours/${concoursId}/matchs/${matchId}/annuler-demarrage`, {
+    method: 'POST',
+  });
+}
+
 export function saisirScore(
   concoursId: string,
   matchId: string,

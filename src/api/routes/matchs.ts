@@ -81,9 +81,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
             terrainNom: match.terrainId
               ? concours.terrains.find((t) => t.id === match.terrainId)?.nom ?? null
               : null,
-            canEditScore: match.statut === 'TERMINE' && !phase.tours.some(
-              (t) => t.numero > tour.numero && t.matchs.some((m) => m.statut !== 'PROGRAMME'),
-            ),
+            canEditScore: match.statut === 'TERMINE' && tour.statut !== 'TERMINE',
           });
         }
       }
@@ -109,6 +107,19 @@ export function createMatchsRouter(ctx: AppContext): Router {
     match.demarrer();
     if (terrain) terrain.occuper();
     concours.enregistrerActionAnnulable(action);
+    await ctx.concoursRepository.save(concours);
+
+    res.json({ matchId: match.id, statut: match.statut });
+  }));
+
+  // POST /:id/matchs/:matchId/annuler-demarrage — Remettre en attente un match sans score
+  router.post('/:id/matchs/:matchId/annuler-demarrage', protect, asyncHandler(async (req, res) => {
+    const { concours, match } = await findMatch(ctx, param(req.params.id), param(req.params.matchId));
+
+    match.annulerDemarrage();
+    if (match.terrainId) {
+      concours.terrains.find((terrain) => terrain.id === match.terrainId)?.liberer();
+    }
     await ctx.concoursRepository.save(concours);
 
     res.json({ matchId: match.id, statut: match.statut });
@@ -260,18 +271,15 @@ export function createMatchsRouter(ctx: AppContext): Router {
 
   // POST /:id/matchs/:matchId/corriger-score — Corriger le score d'un match terminé
   router.post('/:id/matchs/:matchId/corriger-score', protect, validateBody(saisirScoreSchema), asyncHandler(async (req, res) => {
-    const { concours, phase, tour, match } = await findMatchWithContext(ctx, param(req.params.id), param(req.params.matchId));
+    const { concours, tour, match } = await findMatchWithContext(ctx, param(req.params.id), param(req.params.matchId));
     const { scoreEquipeA, scoreEquipeB } = req.body;
 
     if (match.statut !== 'TERMINE') {
       throw ApiError.badRequest('Seul un match terminé peut être corrigé');
     }
 
-    const tourSuivantDemarre = phase.tours.some(
-      (t) => t.numero > tour.numero && t.matchs.some((m) => m.statut !== 'PROGRAMME'),
-    );
-    if (tourSuivantDemarre) {
-      throw ApiError.badRequest('Impossible de corriger : le tour suivant a déjà commencé');
+    if (tour.statut === 'TERMINE') {
+      throw ApiError.badRequest('Impossible de corriger : le tour est déjà terminé');
     }
 
     const action = concours.capturerActionAnnulable(

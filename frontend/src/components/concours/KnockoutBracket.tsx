@@ -74,8 +74,9 @@ export function KnockoutBracket({
     : 'border-border/80 text-muted-foreground';
 
   // Hauteur d'un match terminé avec l'action de correction placée dans l'en-tête.
-  const CARD_HEIGHT = 128;
+  const CARD_HEIGHT = 122;
   const GAP = 20;
+  const isStandaloneDenseRound = totalRounds === 1 && rounds[0].matchs.length >= 4;
 
   // Check if the last round has all matches finished → can advance
   const lastRound = rounds[rounds.length - 1];
@@ -118,7 +119,9 @@ export function KnockoutBracket({
                   {displayName}
                 </div>
                 <div
-                  className="bracket-round-matches relative flex flex-col"
+                  className={`bracket-round-matches relative ${
+                    isStandaloneDenseRound ? 'grid md:grid-cols-2' : 'flex flex-col'
+                  }`}
                   style={{
                     gap: `${GAP + (CARD_HEIGHT + GAP) * (Math.pow(2, colIdx) - 1)}px`,
                     paddingTop: `${paddingTop}px`,

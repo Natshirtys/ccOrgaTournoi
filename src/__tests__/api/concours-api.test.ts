@@ -512,6 +512,104 @@ describe('API Concours', () => {
     expect(res.body.error).toMatch(/invalide/i);
   });
 
+  it('annule le démarrage sans score et libère le terrain', async () => {
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'Concours avec remise en attente',
+      dateDebut: '2026-10-01',
+      organisateurId: 'org-1',
+      typeEquipe: 'DOUBLETTE',
+      nbEquipesMin: 4,
+      nbTerrains: 2,
+    });
+    const id = createRes.body.id as string;
+    await request(app, 'POST', `/api/v1/concours/${id}/ouvrir-inscriptions`);
+    for (let index = 1; index <= 4; index++) {
+      await request(app, 'POST', `/api/v1/concours/${id}/inscriptions`, {
+        nomEquipe: `Equipe ${index}`,
+      });
+    }
+    await request(app, 'POST', `/api/v1/concours/${id}/cloturer-inscriptions`);
+    await request(app, 'POST', `/api/v1/concours/${id}/tirage`, { nbPoules: 1 });
+
+    const matchsRes = await request(app, 'GET', `/api/v1/concours/${id}/matchs`);
+    const match = (matchsRes.body.data as Array<Record<string, unknown>>)
+      .find((item) => item.equipeBId !== null && item.terrainId !== null)!;
+    const matchId = match.id as string;
+    const terrainId = match.terrainId as string;
+
+    const demarrageRes = await request(
+      app,
+      'POST',
+      `/api/v1/concours/${id}/matchs/${matchId}/demarrer`,
+    );
+    expect(demarrageRes.status).toBe(200);
+
+    const detailEnCours = await request(app, 'GET', `/api/v1/concours/${id}`);
+    const terrainOccupe = (detailEnCours.body.terrains as Array<Record<string, unknown>>)
+      .find((item) => item.id === terrainId)!;
+    expect(terrainOccupe.occupe).toBe(true);
+
+    const annulationRes = await request(
+      app,
+      'POST',
+      `/api/v1/concours/${id}/matchs/${matchId}/annuler-demarrage`,
+    );
+    expect(annulationRes.status).toBe(200);
+    expect(annulationRes.body.statut).toBe('PROGRAMME');
+
+    const detailProgramme = await request(app, 'GET', `/api/v1/concours/${id}`);
+    const terrainLibere = (detailProgramme.body.terrains as Array<Record<string, unknown>>)
+      .find((item) => item.id === terrainId)!;
+    expect(terrainLibere.occupe).toBe(false);
+
+    const secondeAnnulationRes = await request(
+      app,
+      'POST',
+      `/api/v1/concours/${id}/matchs/${matchId}/annuler-demarrage`,
+    );
+    expect(secondeAnnulationRes.status).toBe(409);
+
+    await request(app, 'POST', `/api/v1/concours/${id}/matchs/${matchId}/demarrer`);
+    await request(app, 'POST', `/api/v1/concours/${id}/matchs/${matchId}/score`, {
+      scoreEquipeA: 13,
+      scoreEquipeB: 7,
+    });
+    const correctionAvantFinTourRes = await request(
+      app,
+      'POST',
+      `/api/v1/concours/${id}/matchs/${matchId}/corriger-score`,
+      { scoreEquipeA: 13, scoreEquipeB: 8 },
+    );
+    expect(correctionAvantFinTourRes.status).toBe(200);
+
+    const annulationApresScoreRes = await request(
+      app,
+      'POST',
+      `/api/v1/concours/${id}/matchs/${matchId}/annuler-demarrage`,
+    );
+    expect(annulationApresScoreRes.status).toBe(400);
+
+    const autreMatch = (matchsRes.body.data as Array<Record<string, unknown>>)
+      .find((item) => item.id !== matchId && item.equipeBId !== null)!;
+    const autreMatchId = autreMatch.id as string;
+    await request(app, 'POST', `/api/v1/concours/${id}/matchs/${autreMatchId}/demarrer`);
+    await request(app, 'POST', `/api/v1/concours/${id}/matchs/${autreMatchId}/score`, {
+      scoreEquipeA: 13,
+      scoreEquipeB: 9,
+    });
+    const tourSuivantRes = await request(app, 'POST', `/api/v1/concours/${id}/generer-tour-suivant`);
+    expect(tourSuivantRes.status).toBe(201);
+
+    const correctionApresFinTourRes = await request(
+      app,
+      'POST',
+      `/api/v1/concours/${id}/matchs/${matchId}/corriger-score`,
+      { scoreEquipeA: 8, scoreEquipeB: 13 },
+    );
+    expect(correctionApresFinTourRes.status).toBe(400);
+    expect(correctionApresFinTourRes.body.error).toMatch(/tour est déjà terminé/i);
+  });
+
   it('annule la dernière saisie de score et restaure le terrain occupé', async () => {
     const createRes = await request(app, 'POST', '/api/v1/concours', {
       nom: 'Concours avec annulation',

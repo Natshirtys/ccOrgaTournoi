@@ -27,6 +27,20 @@ describe('Machine à états Match', () => {
     expect(m.statut).toBe(StatutMatch.EN_COURS);
   });
 
+  it('EN_COURS → PROGRAMME lors de l’annulation du démarrage', () => {
+    const m = creerMatchTest();
+    m.demarrer();
+    m.annulerDemarrage();
+    expect(m.statut).toBe(StatutMatch.PROGRAMME);
+    expect(m.score).toBeNull();
+    expect(m.resultat).toBeNull();
+  });
+
+  it('refuse d’annuler le démarrage d’un match qui n’est pas en cours', () => {
+    const m = creerMatchTest();
+    expect(() => m.annulerDemarrage()).toThrow(InvalidStateTransitionError);
+  });
+
   it('EN_COURS → SCORE_SAISI', () => {
     const m = creerMatchTest();
     m.demarrer();

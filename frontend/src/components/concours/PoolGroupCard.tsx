@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SaisirScoreDialog } from './SaisirScoreDialog';
 import { CorrigerScoreDialog } from './CorrigerScoreDialog';
+import { AnnulerDemarrageButton } from './AnnulerDemarrageButton';
 import { TerrainBadge } from './TerrainBadge';
 import { demarrerMatch } from '@/api/matchs';
 import type { MatchDto, TerrainDto } from '@/types/concours';
@@ -156,12 +157,15 @@ function PoolMatchActions({
   }
   if (match.statut === 'EN_COURS') {
     return (
-      <SaisirScoreDialog
-        concoursId={concoursId}
-        matchId={match.id}
-        equipeANom={equipeANom}
-        equipeBNom={equipeBNom}
-      />
+      <div className="flex items-center gap-1">
+        <SaisirScoreDialog
+          concoursId={concoursId}
+          matchId={match.id}
+          equipeANom={equipeANom}
+          equipeBNom={equipeBNom}
+        />
+        <AnnulerDemarrageButton concoursId={concoursId} matchId={match.id} compact />
+      </div>
     );
   }
   if (match.statut === 'TERMINE' && match.canEditScore && match.score) {

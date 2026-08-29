@@ -5,6 +5,7 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { SaisirScoreDialog } from './SaisirScoreDialog';
 import { CorrigerScoreDialog } from './CorrigerScoreDialog';
+import { AnnulerDemarrageButton } from './AnnulerDemarrageButton';
 import { TerrainBadge } from './TerrainBadge';
 import { demarrerMatch, declarerForfait } from '@/api/matchs';
 import type { MatchDto, TerrainDto } from '@/types/concours';
@@ -115,6 +116,7 @@ export function MatchRow({ match, concoursId, equipeANom, equipeBNom, terrains =
                   equipeANom={equipeANom}
                   equipeBNom={equipeBNom}
                 />
+                <AnnulerDemarrageButton concoursId={concoursId} matchId={match.id} />
                 <Button
                   size="sm"
                   variant="destructive"

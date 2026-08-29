@@ -4,7 +4,7 @@ import { Score, ResultatMatch } from '../../shared/value-objects.js';
 
 const TRANSITIONS_MATCH: Record<StatutMatch, StatutMatch[]> = {
   [StatutMatch.PROGRAMME]: [StatutMatch.EN_COURS],
-  [StatutMatch.EN_COURS]: [StatutMatch.SCORE_SAISI, StatutMatch.FORFAIT, StatutMatch.ABANDON],
+  [StatutMatch.EN_COURS]: [StatutMatch.PROGRAMME, StatutMatch.SCORE_SAISI, StatutMatch.FORFAIT, StatutMatch.ABANDON],
   [StatutMatch.SCORE_SAISI]: [StatutMatch.TERMINE],
   [StatutMatch.TERMINE]: [StatutMatch.EN_CORRECTION],
   [StatutMatch.EN_CORRECTION]: [StatutMatch.TERMINE],
@@ -85,6 +85,13 @@ export class Match extends Entity {
 
   demarrer(): void {
     this.transitionVers(StatutMatch.EN_COURS);
+  }
+
+  annulerDemarrage(): void {
+    if (this._score !== null || this._resultat !== null) {
+      throw new InvariantViolationError("Le démarrage ne peut plus être annulé après la saisie d'un résultat");
+    }
+    this.transitionVers(StatutMatch.PROGRAMME);
   }
 
   saisirScore(score: Score): void {

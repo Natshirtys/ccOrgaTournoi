@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { SaisirScoreDialog } from './SaisirScoreDialog';
 import { CorrigerScoreDialog } from './CorrigerScoreDialog';
+import { AnnulerDemarrageButton } from './AnnulerDemarrageButton';
 import { demarrerMatch, assignerTerrain } from '@/api/matchs';
 import type { MatchDto, TerrainDto } from '@/types/concours';
 import { ActionError } from '@/components/ui/action-error';
@@ -145,8 +146,7 @@ export function BracketMatchCard({
     !readOnly && match.statut === 'TERMINE' && match.canEditScore && match.score;
   const hasFooter =
     demarrerMutation.error
-    || terrainMutation.error
-    || (!readOnly && (match.statut === 'PROGRAMME' || match.statut === 'EN_COURS'));
+    || terrainMutation.error;
 
   return (
     <div className={cn(
@@ -201,6 +201,28 @@ export function BracketMatchCard({
           {isTermine && (
             <span className={cn('text-[10px]', tokens.fgMuted)}>Terminé</span>
           )}
+          {!readOnly && match.statut === 'PROGRAMME' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-10 px-3 text-xs text-primary hover:bg-primary/10 hover:text-primary sm:h-7"
+              onClick={() => demarrerMutation.mutate()}
+              disabled={demarrerMutation.isPending}
+            >
+              Démarrer
+            </Button>
+          )}
+          {!readOnly && match.statut === 'EN_COURS' && (
+            <>
+              <SaisirScoreDialog
+                concoursId={concoursId}
+                matchId={match.id}
+                equipeANom={nomA}
+                equipeBNom={nomB}
+              />
+              <AnnulerDemarrageButton concoursId={concoursId} matchId={match.id} compact />
+            </>
+          )}
           {canCorrectScore && (
             <CorrigerScoreDialog
               concoursId={concoursId}
@@ -240,29 +262,6 @@ export function BracketMatchCard({
       {hasFooter && (
       <div className={cn('flex min-h-9 items-center justify-center border-t px-2 py-1.5', tokens.divider, tokens.barBg)}>
         <ActionError error={demarrerMutation.error ?? terrainMutation.error} compact />
-        {!demarrerMutation.error && !terrainMutation.error && (
-          <>
-        {!readOnly && match.statut === 'PROGRAMME' && (
-          <Button
-            size="sm"
-            variant="secondary"
-            className="h-10 px-4 text-sm sm:h-6 sm:px-3 sm:text-xs"
-            onClick={() => demarrerMutation.mutate()}
-            disabled={demarrerMutation.isPending}
-          >
-            Démarrer
-          </Button>
-        )}
-        {!readOnly && match.statut === 'EN_COURS' && (
-          <SaisirScoreDialog
-            concoursId={concoursId}
-            matchId={match.id}
-            equipeANom={nomA}
-            equipeBNom={nomB}
-          />
-        )}
-          </>
-        )}
       </div>
       )}
     </div>
