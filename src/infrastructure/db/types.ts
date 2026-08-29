@@ -127,6 +127,30 @@ export interface TerrainData {
   type: string;
 }
 
+export interface EtatMatchAnnulableData {
+  matchId: string;
+  statut: string;
+  score: ScoreData | null;
+  resultat: ResultatMatchData | null;
+  terrainId: string | null;
+  horaire: string | null;
+}
+
+export interface EtatTerrainAnnulableData {
+  terrainId: string;
+  actif: boolean;
+  occupe: boolean;
+}
+
+export interface ActionAnnulableData {
+  type: string;
+  libelle: string;
+  creeLe: string;
+  signatureApres: string;
+  matchs: EtatMatchAnnulableData[];
+  terrains: EtatTerrainAnnulableData[];
+}
+
 export interface ConcoursData {
   id: string;
   nom: string;
@@ -136,6 +160,7 @@ export interface ConcoursData {
   organisateurId: string;
   statut: string;
   estPublic?: boolean;
+  derniereActionAnnulable?: ActionAnnulableData | null;
   // FormuleConcours
   formule: {
     typeEquipe: string;

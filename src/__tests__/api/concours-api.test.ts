@@ -511,4 +511,92 @@ describe('API Concours', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/invalide/i);
   });
+
+  it('annule la dernière saisie de score et restaure le terrain occupé', async () => {
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'Concours avec annulation',
+      dateDebut: '2026-10-01',
+      organisateurId: 'org-1',
+      typeEquipe: 'DOUBLETTE',
+      nbEquipesMin: 4,
+      nbTerrains: 2,
+    });
+    const id = createRes.body.id as string;
+    await request(app, 'POST', `/api/v1/concours/${id}/ouvrir-inscriptions`);
+    for (let index = 1; index <= 4; index++) {
+      await request(app, 'POST', `/api/v1/concours/${id}/inscriptions`, {
+        nomEquipe: `Equipe ${index}`,
+      });
+    }
+    await request(app, 'POST', `/api/v1/concours/${id}/cloturer-inscriptions`);
+    await request(app, 'POST', `/api/v1/concours/${id}/tirage`, { nbPoules: 1 });
+
+    const matchsRes = await request(app, 'GET', `/api/v1/concours/${id}/matchs`);
+    const match = (matchsRes.body.data as Array<Record<string, unknown>>)
+      .find((item) => item.equipeBId !== null)!;
+    const matchId = match.id as string;
+    const terrainId = match.terrainId as string;
+    const autreMatch = (matchsRes.body.data as Array<Record<string, unknown>>)
+      .find((item) => item.id !== matchId && item.terrainId !== terrainId)!;
+    const autreMatchId = autreMatch.id as string;
+    const autreTerrainId = autreMatch.terrainId as string;
+
+    const terrainRes = await request(
+      app,
+      'POST',
+      `/api/v1/concours/${id}/matchs/${matchId}/terrain`,
+      { terrainId: autreTerrainId },
+    );
+    expect(terrainRes.status).toBe(200);
+    const detailTerrain = await request(app, 'GET', `/api/v1/concours/${id}`);
+    expect((detailTerrain.body.derniereActionAnnulable as Record<string, unknown>).type)
+      .toBe('TERRAIN');
+    await request(app, 'POST', `/api/v1/concours/${id}/annuler-derniere-action`);
+
+    const matchsApresTerrain = await request(app, 'GET', `/api/v1/concours/${id}/matchs`);
+    const affectationsRestaurees = matchsApresTerrain.body.data as Array<Record<string, unknown>>;
+    expect(affectationsRestaurees.find((item) => item.id === matchId)?.terrainId).toBe(terrainId);
+    expect(affectationsRestaurees.find((item) => item.id === autreMatchId)?.terrainId)
+      .toBe(autreTerrainId);
+
+    await request(app, 'POST', `/api/v1/concours/${id}/matchs/${matchId}/demarrer`);
+    const scoreRes = await request(app, 'POST', `/api/v1/concours/${id}/matchs/${matchId}/score`, {
+      scoreEquipeA: 13,
+      scoreEquipeB: 7,
+    });
+    expect(scoreRes.status).toBe(200);
+
+    const detailAvant = await request(app, 'GET', `/api/v1/concours/${id}`);
+    expect((detailAvant.body.derniereActionAnnulable as Record<string, unknown>).type)
+      .toBe('SCORE');
+
+    const undoRes = await request(app, 'POST', `/api/v1/concours/${id}/annuler-derniere-action`);
+    expect(undoRes.status).toBe(200);
+    expect(undoRes.body.annulee).toBe('Saisie du score 13–7');
+
+    const matchsApres = await request(app, 'GET', `/api/v1/concours/${id}/matchs`);
+    const matchRestaure = (matchsApres.body.data as Array<Record<string, unknown>>)
+      .find((item) => item.id === matchId)!;
+    expect(matchRestaure.statut).toBe('EN_COURS');
+    expect(matchRestaure.score).toBeNull();
+
+    const detailApres = await request(app, 'GET', `/api/v1/concours/${id}`);
+    const terrainRestaure = (detailApres.body.terrains as Array<Record<string, unknown>>)
+      .find((item) => item.id === terrainId)!;
+    expect(terrainRestaure.occupe).toBe(true);
+    expect(detailApres.body.derniereActionAnnulable).toBeNull();
+
+    await request(app, 'POST', `/api/v1/concours/${id}/matchs/${matchId}/score`, {
+      scoreEquipeA: 13,
+      scoreEquipeB: 8,
+    });
+    await request(app, 'PATCH', `/api/v1/concours/${id}/visibilite`, { estPublic: false });
+    const staleUndoRes = await request(
+      app,
+      'POST',
+      `/api/v1/concours/${id}/annuler-derniere-action`,
+    );
+    expect(staleUndoRes.status).toBe(400);
+    expect(staleUndoRes.body.error).toMatch(/Aucune action récente/);
+  });
 });

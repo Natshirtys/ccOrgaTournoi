@@ -1,10 +1,41 @@
 import { AggregateRoot, EntityId, InvalidStateTransitionError, InvariantViolationError } from '../../../shared/types.js';
-import { StatutConcours, TypePhase } from '../../shared/enums.js';
-import { DateRange, FormuleConcours, ReglementConcours } from '../../shared/value-objects.js';
+import { StatutConcours, StatutMatch, TypePhase } from '../../shared/enums.js';
+import { DateRange, FormuleConcours, ReglementConcours, ResultatMatch, Score } from '../../shared/value-objects.js';
 import { Terrain } from './terrain.js';
 import { Phase } from './phase.js';
 import { Inscription } from './inscription.js';
 import { Equipe } from './equipe.js';
+
+export type TypeActionAnnulable =
+  | 'DEMARRAGE_MATCH'
+  | 'SCORE'
+  | 'FORFAIT'
+  | 'TERRAIN'
+  | 'CORRECTION_SCORE';
+
+export interface EtatMatchAnnulable {
+  matchId: EntityId;
+  statut: StatutMatch;
+  score: Score | null;
+  resultat: ResultatMatch | null;
+  terrainId: EntityId | null;
+  horaire: Date | null;
+}
+
+export interface EtatTerrainAnnulable {
+  terrainId: EntityId;
+  actif: boolean;
+  occupe: boolean;
+}
+
+export interface ActionAnnulable {
+  type: TypeActionAnnulable;
+  libelle: string;
+  creeLe: Date;
+  signatureApres: string;
+  matchs: EtatMatchAnnulable[];
+  terrains: EtatTerrainAnnulable[];
+}
 
 const TRANSITIONS_CONCOURS: Record<StatutConcours, StatutConcours[]> = {
   [StatutConcours.BROUILLON]: [StatutConcours.INSCRIPTIONS_OUVERTES],
@@ -22,6 +53,7 @@ export class Concours extends AggregateRoot {
   private _phases: Phase[];
   private _inscriptions: Inscription[];
   private _estPublic: boolean;
+  private _derniereActionAnnulable: ActionAnnulable | null;
 
   constructor(
     id: EntityId,
@@ -36,6 +68,7 @@ export class Concours extends AggregateRoot {
     phases: Phase[] = [],
     inscriptions: Inscription[] = [],
     estPublic?: boolean,
+    derniereActionAnnulable: ActionAnnulable | null = null,
   ) {
     super(id);
     this._statut = statut;
@@ -44,6 +77,7 @@ export class Concours extends AggregateRoot {
     this._inscriptions = inscriptions;
     // Rétrocompatibilité : les concours existants restent visibles, sauf les archives.
     this._estPublic = estPublic ?? statut !== StatutConcours.ARCHIVE;
+    this._derniereActionAnnulable = derniereActionAnnulable;
   }
 
   // --- Getters ---
@@ -74,6 +108,85 @@ export class Concours extends AggregateRoot {
 
   get estPublic(): boolean {
     return this._estPublic;
+  }
+
+  get derniereActionAnnulable(): ActionAnnulable | null {
+    if (!this._derniereActionAnnulable) return null;
+    return this._derniereActionAnnulable.signatureApres === this.calculerSignatureEtat()
+      ? this._derniereActionAnnulable
+      : null;
+  }
+
+  capturerActionAnnulable(type: TypeActionAnnulable, libelle: string): ActionAnnulable {
+    return {
+      type,
+      libelle,
+      creeLe: new Date(),
+      signatureApres: '',
+      matchs: this._phases.flatMap((phase) =>
+        phase.tours.flatMap((tour) =>
+          tour.matchs.map((match) => ({
+            matchId: match.id,
+            statut: match.statut,
+            score: match.score,
+            resultat: match.resultat,
+            terrainId: match.terrainId,
+            horaire: match.horaire,
+          })),
+        ),
+      ),
+      terrains: this._terrains.map((terrain) => ({
+        terrainId: terrain.id,
+        actif: terrain.actif,
+        occupe: terrain.occupe,
+      })),
+    };
+  }
+
+  enregistrerActionAnnulable(action: ActionAnnulable): void {
+    this._derniereActionAnnulable = {
+      ...action,
+      signatureApres: this.calculerSignatureEtat(),
+    };
+  }
+
+  annulerDerniereAction(): string {
+    this.verifierNonArchive();
+    const action = this.derniereActionAnnulable;
+    if (!action) {
+      throw new InvariantViolationError('Aucune action récente ne peut être annulée');
+    }
+
+    const matchs = new Map(
+      this._phases.flatMap((phase) =>
+        phase.tours.flatMap((tour) => tour.matchs.map((match) => [match.id, match] as const)),
+      ),
+    );
+    for (const etat of action.matchs) {
+      const match = matchs.get(etat.matchId);
+      if (!match) {
+        throw new InvariantViolationError('Le concours a trop évolué pour annuler cette action');
+      }
+      match.restaurerEtat(
+        etat.statut,
+        etat.score,
+        etat.resultat,
+        etat.terrainId,
+        etat.horaire,
+      );
+    }
+
+    const terrains = new Map(this._terrains.map((terrain) => [terrain.id, terrain] as const));
+    for (const etat of action.terrains) {
+      const terrain = terrains.get(etat.terrainId);
+      if (!terrain) {
+        throw new InvariantViolationError('Le concours a trop évolué pour annuler cette action');
+      }
+      terrain.restaurerEtat(etat.actif, etat.occupe);
+    }
+
+    this._derniereActionAnnulable = null;
+    return action.libelle;
   }
 
   definirVisibilite(estPublic: boolean): void {
@@ -232,6 +345,62 @@ export class Concours extends AggregateRoot {
         );
       }
     }
+  }
+
+  private calculerSignatureEtat(): string {
+    const etat = JSON.stringify({
+      statut: this._statut,
+      estPublic: this._estPublic,
+      terrains: this._terrains.map((terrain) => ({
+        id: terrain.id,
+        actif: terrain.actif,
+        occupe: terrain.occupe,
+      })),
+      inscriptions: this._inscriptions.map((inscription) => ({
+        id: inscription.id,
+        statut: inscription.statut,
+        equipeId: inscription.equipe.id,
+        nom: inscription.equipe.nom,
+        joueurs: inscription.equipe.joueurIds,
+        club: inscription.equipe.clubId,
+        teteDeSerie: inscription.teteDeSerie,
+      })),
+      phases: this._phases.map((phase) => ({
+        id: phase.id,
+        statut: phase.statut,
+        tours: phase.tours.map((tour) => ({
+          id: tour.id,
+          statut: tour.statut,
+          matchs: tour.matchs.map((match) => ({
+            id: match.id,
+            statut: match.statut,
+            terrainId: match.terrainId,
+            horaire: match.horaire?.toISOString() ?? null,
+            score: match.score
+              ? [match.score.pointsA, match.score.pointsB]
+              : null,
+            resultat: match.resultat
+              ? [
+                  match.resultat.vainqueur,
+                  match.resultat.type,
+                  match.resultat.pointsAttribuesA,
+                  match.resultat.pointsAttribuesB,
+                ]
+              : null,
+          })),
+        })),
+      })),
+    });
+
+    let hashA = 2166136261;
+    let hashB = 5381;
+    for (let index = 0; index < etat.length; index++) {
+      const code = etat.charCodeAt(index);
+      hashA ^= code;
+      hashA = Math.imul(hashA, 16777619);
+      hashB = Math.imul(hashB, 33) ^ code;
+    }
+    return `${etat.length}:${hashA >>> 0}:${hashB >>> 0}`;
   }
 
   private verifierInscriptionsOuvertes(): void {

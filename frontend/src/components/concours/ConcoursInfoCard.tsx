@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
 import { ActionError } from '@/components/ui/action-error';
-import { ArrowRight, CheckCircle2, Compass, Download, Info } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Compass, Download, Info, Undo2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -24,6 +24,7 @@ import {
   genererTourSuivant,
   terminerConcours,
   exporterSauvegardeConcours,
+  annulerDerniereAction,
 } from '@/api/concours';
 import { telechargerSauvegarde } from '@/lib/concours-backup';
 import type { ConcoursDetail, TypePhase } from '@/types/concours';
@@ -236,6 +237,14 @@ export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCard
     onSuccess: (sauvegarde) => telechargerSauvegarde(sauvegarde, concours.nom),
   });
 
+  const annulationMutation = useMutation({
+    mutationFn: () => annulerDerniereAction(concours.id),
+    onSuccess: () => {
+      invalidateAll();
+      queryClient.invalidateQueries({ queryKey: ['concours', concours.id, 'matchs'] });
+    },
+  });
+
   const statut = concours.statut;
   const prochaineAction = concours.prochaineAction;
   const typePhase = concours.formule.typePhase ?? concours.phases[0]?.type;
@@ -244,7 +253,8 @@ export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCard
     ?? tirageMutation.error
     ?? tourSuivantMutation.error
     ?? terminerMutation.error
-    ?? sauvegardeMutation.error;
+    ?? sauvegardeMutation.error
+    ?? annulationMutation.error;
 
   return (
     <Card>
@@ -424,6 +434,36 @@ export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCard
 
         {isAuthenticated && (
           <div className="mt-3 flex flex-wrap gap-2">
+            {concours.derniereActionAnnulable && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    disabled={annulationMutation.isPending}
+                  >
+                    <Undo2 className="h-4 w-4" />
+                    Annuler : {concours.derniereActionAnnulable.libelle}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Annuler la dernière action ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      « {concours.derniereActionAnnulable.libelle} » sera annulée et l’état précédent
+                      des matchs et des terrains sera restauré. Cette annulation ne pourra pas être rejouée.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Conserver l’action</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => annulationMutation.mutate()}>
+                      Annuler l’action
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <Button
               size="sm"
               variant="ghost"

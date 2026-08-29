@@ -46,4 +46,9 @@ export class Terrain extends Entity {
   remettreEnService(): void {
     this._actif = true;
   }
+
+  restaurerEtat(actif: boolean, occupe: boolean): void {
+    this._actif = actif;
+    this._occupe = occupe;
+  }
 }

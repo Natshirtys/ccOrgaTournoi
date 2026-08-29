@@ -74,6 +74,10 @@ export function terminerConcours(id: string): Promise<{ statut: string }> {
   return apiFetch(`/concours/${id}/terminer`, { method: 'POST' });
 }
 
+export function annulerDerniereAction(id: string): Promise<{ annulee: string }> {
+  return apiFetch(`/concours/${id}/annuler-derniere-action`, { method: 'POST' });
+}
+
 export function archiverConcours(id: string): Promise<{ statut: string; estPublic: boolean }> {
   return apiFetch(`/concours/${id}/archiver`, { method: 'POST' });
 }

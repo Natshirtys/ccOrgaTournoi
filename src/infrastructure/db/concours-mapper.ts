@@ -1,4 +1,8 @@
-import { Concours } from '../../domain/concours/entities/concours.js';
+import {
+  Concours,
+  ActionAnnulable,
+  TypeActionAnnulable,
+} from '../../domain/concours/entities/concours.js';
 import { Phase } from '../../domain/concours/entities/phase.js';
 import { Tour } from '../../domain/concours/entities/tour.js';
 import { Match } from '../../domain/concours/entities/match.js';
@@ -41,6 +45,7 @@ import {
   LigneClassementData,
   PhaseDefinitionData,
   QualificationRuleData,
+  ActionAnnulableData,
 } from './types.js';
 
 // ─── SERIALIZE ───────────────────────────────────────────────────────────────
@@ -161,6 +166,37 @@ function serializeInscription(i: Inscription): InscriptionData {
   };
 }
 
+function serializeActionAnnulable(action: ActionAnnulable): ActionAnnulableData {
+  return {
+    type: action.type,
+    libelle: action.libelle,
+    creeLe: action.creeLe.toISOString(),
+    signatureApres: action.signatureApres,
+    matchs: action.matchs.map((etat) => ({
+      matchId: etat.matchId,
+      statut: etat.statut,
+      score: etat.score
+        ? { pointsA: etat.score.pointsA, pointsB: etat.score.pointsB }
+        : null,
+      resultat: etat.resultat
+        ? {
+            vainqueur: etat.resultat.vainqueur,
+            type: etat.resultat.type,
+            score: {
+              pointsA: etat.resultat.score.pointsA,
+              pointsB: etat.resultat.score.pointsB,
+            },
+            pointsAttribuesA: etat.resultat.pointsAttribuesA,
+            pointsAttribuesB: etat.resultat.pointsAttribuesB,
+          }
+        : null,
+      terrainId: etat.terrainId,
+      horaire: etat.horaire?.toISOString() ?? null,
+    })),
+    terrains: action.terrains.map((etat) => ({ ...etat })),
+  };
+}
+
 export function serialize(concours: Concours): ConcoursData {
   return {
     id: concours.id,
@@ -171,6 +207,9 @@ export function serialize(concours: Concours): ConcoursData {
     organisateurId: concours.organisateurId,
     statut: concours.statut,
     estPublic: concours.estPublic,
+    derniereActionAnnulable: concours.derniereActionAnnulable
+      ? serializeActionAnnulable(concours.derniereActionAnnulable)
+      : null,
     formule: {
       typeEquipe: concours.formule.typeEquipe,
       phases: concours.formule.phases.map(serializePhaseDefinition),
@@ -304,6 +343,32 @@ function deserializeInscription(d: InscriptionData): Inscription {
   );
 }
 
+function deserializeActionAnnulable(data: ActionAnnulableData): ActionAnnulable {
+  return {
+    type: data.type as TypeActionAnnulable,
+    libelle: data.libelle,
+    creeLe: new Date(data.creeLe),
+    signatureApres: data.signatureApres,
+    matchs: data.matchs.map((etat) => ({
+      matchId: etat.matchId,
+      statut: etat.statut as StatutMatch,
+      score: etat.score ? new Score(etat.score.pointsA, etat.score.pointsB) : null,
+      resultat: etat.resultat
+        ? new ResultatMatch(
+            etat.resultat.vainqueur,
+            etat.resultat.type as TypeResultat,
+            new Score(etat.resultat.score.pointsA, etat.resultat.score.pointsB),
+            etat.resultat.pointsAttribuesA,
+            etat.resultat.pointsAttribuesB,
+          )
+        : null,
+      terrainId: etat.terrainId,
+      horaire: etat.horaire ? new Date(etat.horaire) : null,
+    })),
+    terrains: data.terrains.map((etat) => ({ ...etat })),
+  };
+}
+
 export function deserialize(data: ConcoursData): Concours {
   const dates = new DateRange(new Date(data.dateDebut), new Date(data.dateFin));
 
@@ -351,5 +416,8 @@ export function deserialize(data: ConcoursData): Concours {
     phases,
     inscriptions,
     data.estPublic,
+    data.derniereActionAnnulable
+      ? deserializeActionAnnulable(data.derniereActionAnnulable)
+      : null,
   );
 }

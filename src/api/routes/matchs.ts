@@ -102,8 +102,13 @@ export function createMatchsRouter(ctx: AppContext): Router {
     if (terrain && !terrain.disponible) {
       throw ApiError.badRequest(`Le terrain ${terrain.nom} est indisponible`);
     }
+    const action = concours.capturerActionAnnulable(
+      'DEMARRAGE_MATCH',
+      'Démarrage du match',
+    );
     match.demarrer();
     if (terrain) terrain.occuper();
+    concours.enregistrerActionAnnulable(action);
     await ctx.concoursRepository.save(concours);
 
     res.json({ matchId: match.id, statut: match.statut });
@@ -113,6 +118,10 @@ export function createMatchsRouter(ctx: AppContext): Router {
   router.post('/:id/matchs/:matchId/score', protect, validateBody(saisirScoreSchema), asyncHandler(async (req, res) => {
     const { concours, phase, tour, match } = await findMatchWithContext(ctx, param(req.params.id), param(req.params.matchId));
     const { scoreEquipeA, scoreEquipeB } = req.body;
+    const action = concours.capturerActionAnnulable(
+      'SCORE',
+      `Saisie du score ${scoreEquipeA}–${scoreEquipeB}`,
+    );
 
     const score = new Score(scoreEquipeA, scoreEquipeB);
     match.saisirScore(score);
@@ -147,6 +156,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
     // Assigner les terrains aux tours suivants si le tour courant est maintenant complet
     assignerTerrainsToursNonAssignes(concours, tour, phase.tours);
 
+    concours.enregistrerActionAnnulable(action);
     await ctx.concoursRepository.save(concours);
 
     res.json({
@@ -160,6 +170,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
   // POST /:id/matchs/:matchId/forfait — Déclarer forfait
   router.post('/:id/matchs/:matchId/forfait', protect, validateBody(declarerForfaitSchema), asyncHandler(async (req, res) => {
     const { concours, phase, tour, match } = await findMatchWithContext(ctx, param(req.params.id), param(req.params.matchId));
+    const action = concours.capturerActionAnnulable('FORFAIT', 'Déclaration de forfait');
 
     match.declarerForfait(req.body.equipeDeclarantForfaitId);
 
@@ -173,6 +184,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
     assignerTerrainsToursNonAssignes(concours, tour, phase.tours);
 
     const vainqueurId = req.body.equipeDeclarantForfaitId === match.equipeAId ? match.equipeBId! : match.equipeAId;
+    concours.enregistrerActionAnnulable(action);
     await ctx.concoursRepository.save(concours);
 
     res.json({
@@ -191,6 +203,10 @@ export function createMatchsRouter(ctx: AppContext): Router {
     // Vérifier que le terrain existe
     const terrain = concours.terrains.find((t) => t.id === terrainId);
     if (!terrain) throw ApiError.notFound('Terrain non trouvé');
+    if (match.terrainId === terrainId) {
+      res.json({ matchId: match.id, terrainId, terrainNumero: terrain.numero, terrainNom: terrain.nom });
+      return;
+    }
 
     // Vérifier que le terrain n'est pas utilisé par un match EN_COURS
     // (l'échange avec un match PROGRAMME est autorisé)
@@ -212,6 +228,10 @@ export function createMatchsRouter(ctx: AppContext): Router {
     }
 
     const oldTerrainId = match.terrainId;
+    const action = concours.capturerActionAnnulable(
+      'TERRAIN',
+      `Affectation de ${terrain.nom}`,
+    );
 
     // Libérer l'ancien terrain si le match courant était EN_COURS
     if (oldTerrainId && match.statut === 'EN_COURS') {
@@ -232,6 +252,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
       terrain.occuper();
     }
 
+    concours.enregistrerActionAnnulable(action);
     await ctx.concoursRepository.save(concours);
 
     res.json({ matchId: match.id, terrainId, terrainNumero: terrain.numero, terrainNom: terrain.nom });
@@ -253,6 +274,10 @@ export function createMatchsRouter(ctx: AppContext): Router {
       throw ApiError.badRequest('Impossible de corriger : le tour suivant a déjà commencé');
     }
 
+    const action = concours.capturerActionAnnulable(
+      'CORRECTION_SCORE',
+      `Correction du score en ${scoreEquipeA}–${scoreEquipeB}`,
+    );
     match.demanderCorrection();
 
     const nouveauScore = new Score(scoreEquipeA, scoreEquipeB);
@@ -275,6 +300,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
     }
 
     match.corrigerScore(nouveauScore, resultat);
+    concours.enregistrerActionAnnulable(action);
     await ctx.concoursRepository.save(concours);
 
     res.json({ matchId: match.id, statut: match.statut, score: { pointsA: scoreEquipeA, pointsB: scoreEquipeB } });

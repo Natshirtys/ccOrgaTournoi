@@ -81,9 +81,16 @@ export interface PhaseDto {
 
 export interface ConcoursDetail extends ConcoursSummary {
   prochaineAction: ProchaineActionDto;
+  derniereActionAnnulable: DerniereActionAnnulableDto | null;
   terrains: TerrainDto[];
   inscriptions: InscriptionDto[];
   phases: PhaseDto[];
+}
+
+export interface DerniereActionAnnulableDto {
+  type: 'DEMARRAGE_MATCH' | 'SCORE' | 'FORFAIT' | 'TERRAIN' | 'CORRECTION_SCORE';
+  libelle: string;
+  creeLe: string;
 }
 
 export type CodeProchaineAction =

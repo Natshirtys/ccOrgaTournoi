@@ -69,6 +69,20 @@ export class Match extends Entity {
     this._horaire = horaire;
   }
 
+  restaurerEtat(
+    statut: StatutMatch,
+    score: Score | null,
+    resultat: ResultatMatch | null,
+    terrainId: EntityId | null,
+    horaire: Date | null,
+  ): void {
+    this._statut = statut;
+    this._score = score;
+    this._resultat = resultat;
+    this._terrainId = terrainId;
+    this._horaire = horaire;
+  }
+
   demarrer(): void {
     this.transitionVers(StatutMatch.EN_COURS);
   }

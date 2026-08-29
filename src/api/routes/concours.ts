@@ -139,6 +139,13 @@ export function createConcoursRouter(ctx: AppContext): Router {
     res.json({
       ...concoursToJson(concours),
       prochaineAction: obtenirProchaineAction(concours),
+      derniereActionAnnulable: concours.derniereActionAnnulable
+        ? {
+            type: concours.derniereActionAnnulable.type,
+            libelle: concours.derniereActionAnnulable.libelle,
+            creeLe: concours.derniereActionAnnulable.creeLe.toISOString(),
+          }
+        : null,
       terrains: concours.terrains.map((t) => ({
         id: t.id, numero: t.numero, nom: t.nom,
         actif: t.actif, occupe: t.occupe, disponible: t.disponible,
@@ -344,6 +351,16 @@ export function createConcoursRouter(ctx: AppContext): Router {
     await ctx.concoursRepository.save(concours);
 
     res.json({ statut: concours.statut });
+  }));
+
+  router.post('/:id/annuler-derniere-action', protect, asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+
+    const libelle = concours.annulerDerniereAction();
+    await ctx.concoursRepository.save(concours);
+
+    res.json({ annulee: libelle });
   }));
 
   // DELETE /:id — Supprimer un concours (interdit si EN_COURS ou ARCHIVE)

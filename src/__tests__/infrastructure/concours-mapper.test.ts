@@ -187,6 +187,37 @@ describe('concours-mapper', () => {
       expect(occupe.disponible).toBe(false);
     });
 
+    it('conserve et restaure la dernière action annulable', () => {
+      const original = buildConcours();
+      const match = original.phases[0].tours[0].matchs.find(m => m.id === 'm1')!;
+      const action = original.capturerActionAnnulable('TERRAIN', 'Affectation de Terrain 2');
+      match.assignerTerrain('t2');
+      original.enregistrerActionAnnulable(action);
+
+      const restored = deserialize(serialize(original));
+      expect(restored.derniereActionAnnulable?.type).toBe('TERRAIN');
+      expect(restored.phases[0].tours[0].matchs.find(m => m.id === 'm1')?.terrainId)
+        .toBe('t2');
+
+      expect(restored.annulerDerniereAction()).toBe('Affectation de Terrain 2');
+      expect(restored.phases[0].tours[0].matchs.find(m => m.id === 'm1')?.terrainId)
+        .toBe('t1');
+      expect(restored.derniereActionAnnulable).toBeNull();
+    });
+
+    it('invalide l’annulation si le concours a changé ensuite', () => {
+      const concours = buildConcours();
+      const match = concours.phases[0].tours[0].matchs.find(m => m.id === 'm1')!;
+      const action = concours.capturerActionAnnulable('TERRAIN', 'Changement de terrain');
+      match.assignerTerrain('t2');
+      concours.enregistrerActionAnnulable(action);
+
+      concours.definirVisibilite(false);
+
+      expect(concours.derniereActionAnnulable).toBeNull();
+      expect(() => concours.annulerDerniereAction()).toThrow(/Aucune action récente/);
+    });
+
     it('reconstruit les inscriptions (statut, teteDeSerie, equipe)', () => {
       const original = buildConcours();
       const restored = deserialize(serialize(original));
