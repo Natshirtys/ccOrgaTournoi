@@ -284,7 +284,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
 
     // Trouver la phase en cours (optionnellement ciblée par phaseId)
     const requestedPhaseId = req.body?.phaseId;
-    let phase = requestedPhaseId
+    const phase = requestedPhaseId
       ? concours.phases.find((p) => p.id === requestedPhaseId && p.statut === StatutPhase.EN_COURS)
       : concours.phases.find((p) => p.statut === StatutPhase.EN_COURS);
     if (!phase) throw ApiError.badRequest('Aucune phase en cours');
@@ -310,7 +310,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
     const phaseEquipeIds = collectPhaseEquipeIds(phase);
 
     const phaseType = phase.type;
-    let newTourGen: { numero: number; matchups: { equipeAId: string; equipeBId: string | null }[]; nom?: string } | null = null;
+    let newTourGen: { numero: number; matchups: { equipeAId: string; equipeBId: string | null }[]; nom?: string } | null;
 
     if (phaseType === TypePhase.POULES) {
       const nbPoules = phase.config.constraints?.nbPoules ?? Math.floor(phaseEquipeIds.length / 4);
