@@ -80,9 +80,31 @@ export interface PhaseDto {
 }
 
 export interface ConcoursDetail extends ConcoursSummary {
+  prochaineAction: ProchaineActionDto;
   terrains: TerrainDto[];
   inscriptions: InscriptionDto[];
   phases: PhaseDto[];
+}
+
+export type CodeProchaineAction =
+  | 'OUVRIR_INSCRIPTIONS'
+  | 'COMPLETER_INSCRIPTIONS'
+  | 'CLOTURER_INSCRIPTIONS'
+  | 'LANCER_TIRAGE'
+  | 'JOUER_MATCHS'
+  | 'GENERER_SUITE'
+  | 'TERMINER_CONCOURS'
+  | 'AUCUNE';
+
+export interface ProchaineActionDto {
+  code: CodeProchaineAction;
+  titre: string;
+  description: string;
+  progression?: {
+    valeur: number;
+    total: number;
+    libelle: string;
+  };
 }
 
 export interface MatchDto {

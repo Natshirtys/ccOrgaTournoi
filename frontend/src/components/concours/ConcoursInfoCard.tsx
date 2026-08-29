@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
 import { ActionError } from '@/components/ui/action-error';
-import { Download, Info } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Compass, Download, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -185,9 +185,10 @@ const FORMAT_SHORT: Partial<Record<TypePhase, string>> = {
 
 interface ConcoursInfoCardProps {
   concours: ConcoursDetail;
+  onNavigateToTab?: (tab: string) => void;
 }
 
-export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
+export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCardProps) {
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const invalidateAll = () => {
@@ -197,7 +198,10 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
 
   const ouvrirMutation = useMutation({
     mutationFn: () => ouvrirInscriptions(concours.id),
-    onSuccess: invalidateAll,
+    onSuccess: () => {
+      invalidateAll();
+      onNavigateToTab?.('inscriptions');
+    },
   });
 
   const cloturerMutation = useMutation({
@@ -207,7 +211,10 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
 
   const tirageMutation = useMutation({
     mutationFn: () => lancerTirage(concours.id, {}),
-    onSuccess: invalidateAll,
+    onSuccess: () => {
+      invalidateAll();
+      onNavigateToTab?.('matchs');
+    },
   });
 
   const tourSuivantMutation = useMutation({
@@ -215,6 +222,7 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
     onSuccess: () => {
       invalidateAll();
       queryClient.invalidateQueries({ queryKey: ['concours', concours.id, 'matchs'] });
+      onNavigateToTab?.('matchs');
     },
   });
 
@@ -229,6 +237,7 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
   });
 
   const statut = concours.statut;
+  const prochaineAction = concours.prochaineAction;
   const typePhase = concours.formule.typePhase ?? concours.phases[0]?.type;
   const actionError = ouvrirMutation.error
     ?? cloturerMutation.error
@@ -300,81 +309,133 @@ export function ConcoursInfoCard({ concours }: ConcoursInfoCardProps) {
             </p>
           </div>
         </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {isAuthenticated && (
+        {isAuthenticated && (
+          <section className="mt-5 overflow-hidden rounded-xl border border-primary/20 bg-primary/[0.04]">
+            <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                  {prochaineAction.code === 'AUCUNE'
+                    ? <CheckCircle2 className="h-5 w-5" />
+                    : <Compass className="h-5 w-5" />}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
+                    Prochaine action
+                  </p>
+                  <h3 className="mt-0.5 font-semibold text-foreground">{prochaineAction.titre}</h3>
+                  <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                    {prochaineAction.description}
+                  </p>
+                  {prochaineAction.progression && (
+                    <div className="mt-3 max-w-md">
+                      <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{prochaineAction.progression.libelle}</span>
+                        <span className="font-semibold text-foreground">
+                          {Math.round(
+                            (prochaineAction.progression.valeur / prochaineAction.progression.total) * 100,
+                          )}%
+                        </span>
+                      </div>
+                      <div
+                        className="h-1.5 overflow-hidden rounded-full bg-primary/15"
+                        role="progressbar"
+                        aria-valuemin={0}
+                        aria-valuemax={prochaineAction.progression.total}
+                        aria-valuenow={prochaineAction.progression.valeur}
+                      >
+                        <div
+                          className="h-full rounded-full bg-primary transition-[width] duration-500"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              (prochaineAction.progression.valeur / prochaineAction.progression.total) * 100,
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="shrink-0 sm:pl-3">
+                {prochaineAction.code === 'OUVRIR_INSCRIPTIONS' && (
+                  <Button onClick={() => ouvrirMutation.mutate()} disabled={ouvrirMutation.isPending}>
+                    Ouvrir les inscriptions <ArrowRight className="h-4 w-4" />
+                  </Button>
+                )}
+                {prochaineAction.code === 'COMPLETER_INSCRIPTIONS' && (
+                  <Button onClick={() => onNavigateToTab?.('inscriptions')}>
+                    Voir les inscriptions <ArrowRight className="h-4 w-4" />
+                  </Button>
+                )}
+                {prochaineAction.code === 'CLOTURER_INSCRIPTIONS' && (
+                  <Button onClick={() => cloturerMutation.mutate()} disabled={cloturerMutation.isPending}>
+                    Clôturer <ArrowRight className="h-4 w-4" />
+                  </Button>
+                )}
+                {prochaineAction.code === 'LANCER_TIRAGE' && (
+                  <Button onClick={() => tirageMutation.mutate()} disabled={tirageMutation.isPending}>
+                    Lancer le tirage <ArrowRight className="h-4 w-4" />
+                  </Button>
+                )}
+                {prochaineAction.code === 'JOUER_MATCHS' && (
+                  <Button onClick={() => onNavigateToTab?.('matchs')}>
+                    Voir les matchs <ArrowRight className="h-4 w-4" />
+                  </Button>
+                )}
+                {prochaineAction.code === 'GENERER_SUITE' && (
+                  <Button
+                    onClick={() => tourSuivantMutation.mutate()}
+                    disabled={tourSuivantMutation.isPending}
+                  >
+                    {tourSuivantMutation.isPending ? 'Génération…' : 'Générer la suite'}
+                    {!tourSuivantMutation.isPending && <ArrowRight className="h-4 w-4" />}
+                  </Button>
+                )}
+                {prochaineAction.code === 'TERMINER_CONCOURS' && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button disabled={terminerMutation.isPending}>
+                        Terminer le concours <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Terminer le concours ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Le concours passera en statut <strong>TERMINÉ</strong>. Tous les matchs doivent être joués.
+                          Cette action est irréversible (sauf archivage).
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => terminerMutation.mutate()}>
+                          Terminer
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {isAuthenticated && (
+          <div className="mt-3 flex flex-wrap gap-2">
             <Button
               size="sm"
-              variant="outline"
-              className="gap-1.5"
+              variant="ghost"
+              className="gap-1.5 text-muted-foreground"
               onClick={() => sauvegardeMutation.mutate()}
               disabled={sauvegardeMutation.isPending}
             >
               <Download className="h-4 w-4" />
               {sauvegardeMutation.isPending ? 'Export…' : 'Sauvegarde JSON'}
             </Button>
-          )}
-          {isAuthenticated && statut === 'BROUILLON' && (
-            <Button
-              size="sm"
-              onClick={() => ouvrirMutation.mutate()}
-              disabled={ouvrirMutation.isPending}
-            >
-              Ouvrir inscriptions
-            </Button>
-          )}
-          {isAuthenticated && statut === 'INSCRIPTIONS_OUVERTES' && (
-            <Button
-              size="sm"
-              onClick={() => cloturerMutation.mutate()}
-              disabled={cloturerMutation.isPending}
-            >
-              Clôturer inscriptions
-            </Button>
-          )}
-          {isAuthenticated && statut === 'INSCRIPTIONS_CLOSES' && (
-            <Button
-              size="sm"
-              onClick={() => tirageMutation.mutate()}
-              disabled={tirageMutation.isPending}
-            >
-              Lancer tirage
-            </Button>
-          )}
-          {isAuthenticated && statut === 'EN_COURS' && (
-            <>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => tourSuivantMutation.mutate()}
-                disabled={tourSuivantMutation.isPending}
-              >
-                {tourSuivantMutation.isPending ? 'En cours...' : 'Tour / phase suivant(e)'}
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="outline" disabled={terminerMutation.isPending}>
-                    Terminer le concours
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Terminer le concours ?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Le concours passera en statut <strong>TERMINÉ</strong>. Tous les matchs doivent être joués.
-                      Cette action est irréversible (sauf archivage).
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Annuler</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => terminerMutation.mutate()}>
-                      Terminer
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </>
-          )}
-        </div>
+          </div>
+        )}
         <div className="mt-3">
           <ActionError error={actionError} />
         </div>

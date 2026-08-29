@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,7 +10,7 @@ import { MatchsTab } from './MatchsTab';
 import { ClassementTab } from './ClassementTab';
 import { ResumeTab } from './ResumeTab';
 import { useAuth } from '@/auth/AuthContext';
-import type { StatutConcours } from '@/types/concours';
+import type { ConcoursDetail, StatutConcours } from '@/types/concours';
 
 function getDefaultTab(statut: StatutConcours, hasSystemeSuisse: boolean): string {
   if (statut === 'EN_COURS') return 'matchs';
@@ -22,34 +23,26 @@ interface ConcoursDetailPageProps {
   onBack: () => void;
 }
 
-export function ConcoursDetailPage({ concoursId, onBack }: ConcoursDetailPageProps) {
-  const { isAuthenticated } = useAuth();
-  const { data: concours, isLoading, error } = useQuery({
-    queryKey: ['concours', concoursId],
-    queryFn: () => fetchConcoursDetail(concoursId),
-  });
+interface ConcoursDetailContentProps {
+  concours: ConcoursDetail;
+  isAuthenticated: boolean;
+  onBack: () => void;
+}
 
-  if (isLoading) {
-    return <p className="py-8 text-center text-muted-foreground">Chargement...</p>;
-  }
-
-  if (error || !concours) {
-    return (
-      <div className="space-y-4 py-8 text-center">
-        <p className="text-destructive">
-          Erreur : {error instanceof Error ? error.message : 'Concours introuvable'}
-        </p>
-        <Button variant="outline" onClick={onBack}>
-          Retour à la liste
-        </Button>
-      </div>
-    );
-  }
-
+function ConcoursDetailContent({
+  concours,
+  isAuthenticated,
+  onBack,
+}: ConcoursDetailContentProps) {
   const hasPhases = concours.phases.length > 0;
   const hasSystemeSuisse = concours.phases.some((p) => p.type === 'SYSTEME_SUISSE');
-  const matchsEnabled = concours.statut === 'EN_COURS' || concours.statut === 'TERMINE' || concours.statut === 'ARCHIVE';
+  const matchsEnabled = concours.statut === 'EN_COURS'
+    || concours.statut === 'TERMINE'
+    || concours.statut === 'ARCHIVE';
   const readOnly = !isAuthenticated || concours.statut === 'ARCHIVE';
+  const [activeTab, setActiveTab] = useState(() =>
+    getDefaultTab(concours.statut, hasSystemeSuisse),
+  );
 
   return (
     <div className="space-y-6">
@@ -57,9 +50,9 @@ export function ConcoursDetailPage({ concoursId, onBack }: ConcoursDetailPagePro
         ← Retour à la liste
       </Button>
 
-      <ConcoursInfoCard concours={concours} />
+      <ConcoursInfoCard concours={concours} onNavigateToTab={setActiveTab} />
 
-      <Tabs defaultValue={getDefaultTab(concours.statut, hasSystemeSuisse)}>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="overflow-x-auto">
           <TabsList className="w-max">
             <TabsTrigger value="inscriptions">Inscriptions</TabsTrigger>
@@ -96,5 +89,37 @@ export function ConcoursDetailPage({ concoursId, onBack }: ConcoursDetailPagePro
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export function ConcoursDetailPage({ concoursId, onBack }: ConcoursDetailPageProps) {
+  const { isAuthenticated } = useAuth();
+  const { data: concours, isLoading, error } = useQuery({
+    queryKey: ['concours', concoursId],
+    queryFn: () => fetchConcoursDetail(concoursId),
+  });
+  if (isLoading) {
+    return <p className="py-8 text-center text-muted-foreground">Chargement...</p>;
+  }
+
+  if (error || !concours) {
+    return (
+      <div className="space-y-4 py-8 text-center">
+        <p className="text-destructive">
+          Erreur : {error instanceof Error ? error.message : 'Concours introuvable'}
+        </p>
+        <Button variant="outline" onClick={onBack}>
+          Retour à la liste
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <ConcoursDetailContent
+      concours={concours}
+      isAuthenticated={isAuthenticated}
+      onBack={onBack}
+    />
   );
 }

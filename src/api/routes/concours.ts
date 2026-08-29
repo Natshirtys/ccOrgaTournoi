@@ -21,6 +21,7 @@ import { SingleEliminationStrategy } from '../../engine/strategies/phase/single-
 import { SwissSystemStrategy } from '../../engine/strategies/phase/swiss-system-strategy.js';
 import { deserialize, serialize } from '../../infrastructure/db/concours-mapper.js';
 import type { ConcoursData } from '../../infrastructure/db/types.js';
+import { obtenirProchaineAction } from '../helpers/next-action.js';
 
 
 // ─── Schemas Zod ────────────────────────────────────────────────────────────
@@ -137,6 +138,7 @@ export function createConcoursRouter(ctx: AppContext): Router {
 
     res.json({
       ...concoursToJson(concours),
+      prochaineAction: obtenirProchaineAction(concours),
       terrains: concours.terrains.map((t) => ({
         id: t.id, numero: t.numero, nom: t.nom,
         actif: t.actif, occupe: t.occupe, disponible: t.disponible,

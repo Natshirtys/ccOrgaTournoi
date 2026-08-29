@@ -74,6 +74,14 @@ describe('API Concours', () => {
     expect(res.body.nom).toBe('Concours Test');
     expect(res.body.statut).toBe('BROUILLON');
     expect(res.body.id).toBeDefined();
+
+    const detailRes = await request(
+      app,
+      'GET',
+      `/api/v1/concours/${res.body.id as string}`,
+    );
+    expect((detailRes.body.prochaineAction as Record<string, unknown>).code)
+      .toBe('OUVRIR_INSCRIPTIONS');
   });
 
   it('POST validation échoue avec des données invalides', async () => {
