@@ -28,7 +28,7 @@ export function TerrainBadge({ match, concoursId, terrains, readOnly }: TerrainB
 
   return (
     <div className="flex flex-col items-start gap-1">
-      <div className="inline-flex items-center gap-1 rounded-md bg-primary/15 px-2 py-1 text-xs font-semibold text-primary dark:bg-primary/20">
+      <div className="inline-flex min-h-10 items-center gap-1 rounded-md bg-primary/15 px-2 py-1 text-xs font-semibold text-primary dark:bg-primary/20 sm:min-h-0">
         <MapPin className="h-3 w-3 shrink-0" />
         {canEdit ? (
           <select

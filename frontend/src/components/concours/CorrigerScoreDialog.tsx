@@ -77,7 +77,13 @@ export function CorrigerScoreDialog({
 
   return (
     <>
-      <Button size="sm" variant="ghost" onClick={handleTrigger} title="Corriger le score">
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-10 w-10 sm:h-8 sm:w-auto"
+        onClick={handleTrigger}
+        title="Corriger le score"
+      >
         <Pencil className="h-3 w-3" />
       </Button>
 
@@ -112,10 +118,12 @@ export function CorrigerScoreDialog({
                 <Input
                   id="corr-scoreA"
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   value={scoreA}
                   onChange={(e) => setScoreA(e.target.value)}
                   required
+                  className="h-12 text-center text-lg font-semibold sm:h-9 sm:text-sm"
                 />
               </div>
               <div className="grid gap-2">
@@ -123,16 +131,18 @@ export function CorrigerScoreDialog({
                 <Input
                   id="corr-scoreB"
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   value={scoreB}
                   onChange={(e) => setScoreB(e.target.value)}
                   required
+                  className="h-12 text-center text-lg font-semibold sm:h-9 sm:text-sm"
                 />
               </div>
             </div>
             <ActionError error={mutation.error} />
             <DialogFooter>
-              <Button type="submit" disabled={mutation.isPending}>
+              <Button type="submit" className="h-11 w-full sm:h-9 sm:w-auto" disabled={mutation.isPending}>
                 {mutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
               </Button>
             </DialogFooter>

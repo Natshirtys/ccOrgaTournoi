@@ -46,26 +46,26 @@ function ConcoursDetailContent({
 
   return (
     <div className="space-y-6">
-      <Button variant="outline" size="sm" onClick={onBack}>
+      <Button variant="outline" size="sm" className="h-10 sm:h-8" onClick={onBack}>
         ← Retour à la liste
       </Button>
 
       <ConcoursInfoCard concours={concours} onNavigateToTab={setActiveTab} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="overflow-x-auto">
-          <TabsList className="w-max">
-            <TabsTrigger value="inscriptions">Inscriptions</TabsTrigger>
-            <TabsTrigger value="terrains">Terrains</TabsTrigger>
-            <TabsTrigger value="matchs" disabled={!matchsEnabled}>
+        <div className="overflow-x-auto overflow-y-hidden">
+          <TabsList className="h-11 min-h-11 w-max sm:h-9 sm:min-h-0">
+            <TabsTrigger value="inscriptions" className="min-h-10 sm:min-h-0">Inscriptions</TabsTrigger>
+            <TabsTrigger value="terrains" className="min-h-10 sm:min-h-0">Terrains</TabsTrigger>
+            <TabsTrigger value="matchs" className="min-h-10 sm:min-h-0" disabled={!matchsEnabled}>
               Matchs
             </TabsTrigger>
             {hasSystemeSuisse && (
-              <TabsTrigger value="classement" disabled={!hasPhases}>
+              <TabsTrigger value="classement" className="min-h-10 sm:min-h-0" disabled={!hasPhases}>
                 Classement
               </TabsTrigger>
             )}
-            <TabsTrigger value="resume" disabled={!matchsEnabled}>
+            <TabsTrigger value="resume" className="min-h-10 sm:min-h-0" disabled={!matchsEnabled}>
               Résumé
             </TabsTrigger>
           </TabsList>

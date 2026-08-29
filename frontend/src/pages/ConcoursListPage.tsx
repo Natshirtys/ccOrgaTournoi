@@ -71,7 +71,7 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
             <Trophy className="h-5 w-5 text-primary" />
@@ -85,7 +85,7 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
           </div>
         </div>
         {isAuthenticated && (
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex w-full flex-wrap gap-2 [&>button]:flex-1 sm:w-auto sm:justify-end sm:[&>button]:flex-none">
             <ImportConcoursDialog />
             <CreateConcoursDialog
               onSubmit={(payload) => createMutation.mutateAsync(payload)}
@@ -101,8 +101,8 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
 
       {/* Tabs */}
       <Tabs defaultValue="actifs">
-        <TabsList className="h-9">
-          <TabsTrigger value="actifs" className="text-sm">
+        <TabsList className="h-11 min-h-11 sm:h-9 sm:min-h-0">
+          <TabsTrigger value="actifs" className="min-h-10 text-sm sm:min-h-0">
             Actifs
             {actifs.length > 0 && (
               <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 py-px text-[10px] font-semibold text-primary">
@@ -110,7 +110,7 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="archives" className="text-sm">
+          <TabsTrigger value="archives" className="min-h-10 text-sm sm:min-h-0">
             Archives
             {archives.length > 0 && (
               <span className="ml-1.5 rounded-full bg-muted-foreground/15 px-1.5 py-px text-[10px] font-semibold text-muted-foreground">

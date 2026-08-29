@@ -63,7 +63,7 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Nouveau concours</Button>
+        <Button className="h-10 sm:h-9">Nouveau concours</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

@@ -185,6 +185,7 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
         <Button
           variant="outline"
           size="sm"
+          className="h-10 w-full sm:h-8 sm:w-auto"
           onClick={handleExport}
           disabled={isExporting}
         >

@@ -22,7 +22,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-primary text-primary-foreground shadow-md">
-        <div className="flex items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-2 px-3 py-3 sm:gap-3 sm:px-6 lg:px-8">
           <img
             src="/ibm-logo-blanc.png"
             alt="IBM"

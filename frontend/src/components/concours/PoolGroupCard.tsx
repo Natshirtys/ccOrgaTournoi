@@ -146,7 +146,7 @@ function PoolMatchActions({
       <Button
         size="sm"
         variant="outline"
-        className="h-7 text-xs"
+        className="h-10 px-4 text-sm sm:h-7 sm:px-3 sm:text-xs"
         onClick={() => demarrerMutation.mutate()}
         disabled={demarrerMutation.isPending}
       >
@@ -336,7 +336,7 @@ export function PoolGroupCard({
                     <div
                       key={m.id}
                       className={cn(
-                        'flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors',
+                        'flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors sm:flex-nowrap',
                         isTermine
                           ? 'bg-muted/50 border-border'
                           : isEnCours
@@ -382,16 +382,14 @@ export function PoolGroupCard({
                         </span>
                       </div>
 
-                      {/* Terrain */}
-                      <TerrainBadge
-                        match={m}
-                        concoursId={concoursId}
-                        terrains={terrains}
-                        readOnly={readOnly}
-                      />
-
-                      {/* Actions */}
-                      <div className="shrink-0">
+                      {/* Terrain + actions : seconde ligne tactile sur mobile */}
+                      <div className="order-last mt-1 flex w-full shrink-0 items-center justify-end gap-2 border-t border-border/60 pt-2 sm:order-none sm:mt-0 sm:w-auto sm:border-0 sm:pt-0">
+                        <TerrainBadge
+                          match={m}
+                          concoursId={concoursId}
+                          terrains={terrains}
+                          readOnly={readOnly}
+                        />
                         <PoolMatchActions
                           match={m}
                           concoursId={concoursId}

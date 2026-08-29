@@ -79,7 +79,7 @@ export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours
         <div
           key={c.id}
           className={cn(
-            'group relative flex cursor-pointer items-center gap-4 rounded-xl border border-border bg-card py-4 pl-5 pr-4 shadow-sm transition-all duration-150 hover:shadow-md hover:border-primary/30 border-l-4',
+            'group relative flex cursor-pointer flex-col items-stretch gap-3 rounded-xl border border-border bg-card py-4 pl-5 pr-4 shadow-sm transition-all duration-150 hover:border-primary/30 hover:shadow-md sm:flex-row sm:items-center sm:gap-4 border-l-4',
             STATUT_BORDER[c.statut] ?? 'border-l-border',
           )}
           onClick={() => onSelectConcours(c.id)}
@@ -119,6 +119,10 @@ export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours
                   <> · {FORMAT_LABELS[c.formule.typePhase] ?? c.formule.typePhase}</>
                 )}
               </span>
+              <span className="flex items-center gap-1 sm:hidden">
+                <Users className="h-3 w-3 shrink-0" />
+                {c.nbEquipesInscrites} équipes
+              </span>
             </div>
           </div>
 
@@ -132,7 +136,10 @@ export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours
           </div>
 
           {/* Actions */}
-          <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border/60 pt-3 sm:w-auto sm:flex-nowrap sm:border-0 sm:pt-0"
+            onClick={(e) => e.stopPropagation()}
+          >
             {onModifierVisibilite && (
               <ConcoursVisibilitySwitch
                 estPublic={c.estPublic}
@@ -141,14 +148,14 @@ export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours
               />
             )}
             {c.statut === 'BROUILLON' && onOuvrirInscriptions && (
-              <Button size="sm" variant="outline" onClick={() => onOuvrirInscriptions(c.id)}>
+              <Button size="sm" variant="outline" className="h-10 sm:h-8" onClick={() => onOuvrirInscriptions(c.id)}>
                 Ouvrir inscriptions
               </Button>
             )}
             {c.statut === 'TERMINE' && onArchiver && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="outline">Archiver</Button>
+                  <Button size="sm" variant="outline" className="h-10 sm:h-8">Archiver</Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -167,7 +174,7 @@ export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours
             {STATUTS_SUPPRESSIBLES.includes(c.statut) && onSupprimer && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive">
+                  <Button size="sm" variant="ghost" className="h-10 text-destructive hover:bg-destructive/10 hover:text-destructive sm:h-8">
                     Supprimer
                   </Button>
                 </AlertDialogTrigger>
@@ -190,7 +197,7 @@ export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            <ChevronRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary transition-colors" />
+            <ChevronRight className="hidden h-4 w-4 text-muted-foreground/50 transition-colors group-hover:text-primary sm:block" />
           </div>
         </div>
       ))}

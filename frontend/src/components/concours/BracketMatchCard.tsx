@@ -152,7 +152,7 @@ export function BracketMatchCard({
           canChangeTerrain && terrains.length > 0 ? (
             <select
               className={cn(
-                'bg-transparent text-xs font-bold cursor-pointer border-none outline-none appearance-none',
+                'min-h-9 cursor-pointer appearance-none border-none bg-transparent text-xs font-bold outline-none sm:min-h-0',
                 tokens.lineColor,
               )}
               value={match.terrainId ?? ''}
@@ -225,7 +225,7 @@ export function BracketMatchCard({
           <Button
             size="sm"
             variant="secondary"
-            className="h-6 px-3 text-xs"
+            className="h-10 px-4 text-sm sm:h-6 sm:px-3 sm:text-xs"
             onClick={() => demarrerMutation.mutate()}
             disabled={demarrerMutation.isPending}
           >

@@ -56,7 +56,7 @@ export function SaisirScoreDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" className="h-10 px-4 sm:h-8 sm:px-3">
           Score
         </Button>
       </DialogTrigger>
@@ -74,10 +74,12 @@ export function SaisirScoreDialog({
               <Input
                 id="scoreA"
                 type="number"
+                inputMode="numeric"
                 min="0"
                 value={scoreA}
                 onChange={(e) => setScoreA(e.target.value)}
                 required
+                className="h-12 text-center text-lg font-semibold sm:h-9 sm:text-sm"
               />
             </div>
             <div className="grid gap-2">
@@ -85,16 +87,18 @@ export function SaisirScoreDialog({
               <Input
                 id="scoreB"
                 type="number"
+                inputMode="numeric"
                 min="0"
                 value={scoreB}
                 onChange={(e) => setScoreB(e.target.value)}
                 required
+                className="h-12 text-center text-lg font-semibold sm:h-9 sm:text-sm"
               />
             </div>
           </div>
           <ActionError error={mutation.error} />
           <DialogFooter>
-            <Button type="submit" disabled={mutation.isPending}>
+            <Button type="submit" className="h-11 w-full sm:h-9 sm:w-auto" disabled={mutation.isPending}>
               {mutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
             </Button>
           </DialogFooter>

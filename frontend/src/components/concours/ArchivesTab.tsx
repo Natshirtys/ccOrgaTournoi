@@ -87,7 +87,7 @@ export function ArchivesTab({ archives, onSupprimer, onSelectConcours, onModifie
       {archives.map((c) => (
         <div
           key={c.id}
-          className={`flex items-center gap-4 rounded-xl border border-border bg-card py-4 pl-5 pr-4 shadow-sm border-l-4 border-l-border opacity-80 ${onSelectConcours ? 'cursor-pointer hover:opacity-100 hover:border-primary/30 transition-all duration-150' : ''}`}
+          className={`flex flex-col items-stretch gap-3 rounded-xl border border-border bg-card py-4 pl-5 pr-4 shadow-sm border-l-4 border-l-border opacity-80 sm:flex-row sm:items-center sm:gap-4 ${onSelectConcours ? 'cursor-pointer hover:opacity-100 hover:border-primary/30 transition-all duration-150' : ''}`}
           onClick={onSelectConcours ? () => onSelectConcours(c.id) : undefined}
         >
           {/* Infos */}
@@ -127,6 +127,10 @@ export function ArchivesTab({ archives, onSupprimer, onSelectConcours, onModifie
               <span className="text-foreground/60">
                 {TYPE_LABELS[c.formule.typeEquipe] ?? c.formule.typeEquipe}
               </span>
+              <span className="flex items-center gap-1 sm:hidden">
+                <Users className="h-3 w-3 shrink-0" />
+                {c.nbEquipesInscrites} équipes
+              </span>
             </div>
           </div>
 
@@ -140,7 +144,10 @@ export function ArchivesTab({ archives, onSupprimer, onSelectConcours, onModifie
           </div>
 
           {/* Actions */}
-          <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="flex w-full shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border/60 pt-3 sm:w-auto sm:flex-nowrap sm:border-0 sm:pt-0"
+            onClick={(e) => e.stopPropagation()}
+          >
             {onModifierVisibilite && (
               <ConcoursVisibilitySwitch
                 estPublic={c.estPublic}
@@ -151,6 +158,7 @@ export function ArchivesTab({ archives, onSupprimer, onSelectConcours, onModifie
             <Button
               size="sm"
               variant="outline"
+              className="h-10 sm:h-8"
               disabled={loadingId === c.id}
               onClick={() => handleExportPdf(c.id)}
             >
@@ -159,7 +167,7 @@ export function ArchivesTab({ archives, onSupprimer, onSelectConcours, onModifie
             {onSupprimer && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive">
+                  <Button size="sm" variant="ghost" className="h-10 text-destructive hover:bg-destructive/10 hover:text-destructive sm:h-8">
                     Supprimer
                   </Button>
                 </AlertDialogTrigger>

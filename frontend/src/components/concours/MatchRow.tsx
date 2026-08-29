@@ -100,7 +100,7 @@ export function MatchRow({ match, concoursId, equipeANom, equipeBNom, terrains =
               <Button
                 size="sm"
                 variant="outline"
-                className="h-6 text-xs"
+                className="h-10 text-sm md:h-6 md:text-xs"
                 onClick={() => demarrerMutation.mutate()}
                 disabled={demarrerMutation.isPending}
               >
@@ -118,7 +118,7 @@ export function MatchRow({ match, concoursId, equipeANom, equipeBNom, terrains =
                 <Button
                   size="sm"
                   variant="destructive"
-                  className="h-6 text-xs"
+                  className="h-10 text-sm md:h-6 md:text-xs"
                   onClick={() => forfaitMutation.mutate(match.equipeAId)}
                   disabled={forfaitMutation.isPending}
                 >

@@ -70,7 +70,7 @@ export function ImportConcoursDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" className="h-10 gap-2 sm:h-9">
           <Upload className="h-4 w-4" />
           Importer
         </Button>

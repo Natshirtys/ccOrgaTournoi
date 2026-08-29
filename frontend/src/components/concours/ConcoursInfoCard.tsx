@@ -258,16 +258,16 @@ export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCard
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <CardHeader className="px-4 sm:px-6">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
             <CardTitle className="text-xl">{concours.nom}</CardTitle>
             <Dialog>
               <DialogTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 gap-1.5 rounded-full border-primary/30 px-3 text-xs text-primary hover:border-primary hover:bg-primary/10"
+                  className="h-10 gap-1.5 rounded-full border-primary/30 px-3 text-xs text-primary hover:border-primary hover:bg-primary/10 sm:h-7"
                 >
                   <Info className="h-3.5 w-3.5" />
                   Règles
@@ -286,7 +286,7 @@ export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCard
           <ConcoursStatusBadge statut={statut} />
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 sm:px-6">
         <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
           {concours.lieu && (
             <div>
@@ -320,7 +320,7 @@ export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCard
           </div>
         </div>
         {isAuthenticated && (
-          <section className="mt-5 overflow-hidden rounded-xl border border-primary/20 bg-primary/[0.04]">
+          <section className="mt-5 overflow-hidden rounded-xl border border-primary/20 bg-primary/[0.04] [&_button]:min-h-11 sm:[&_button]:min-h-9">
             <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
@@ -440,7 +440,7 @@ export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCard
                   <Button
                     size="sm"
                     variant="outline"
-                    className="gap-1.5"
+                    className="h-10 gap-1.5 sm:h-8"
                     disabled={annulationMutation.isPending}
                   >
                     <Undo2 className="h-4 w-4" />
@@ -467,7 +467,7 @@ export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCard
             <Button
               size="sm"
               variant="ghost"
-              className="gap-1.5 text-muted-foreground"
+              className="h-10 gap-1.5 text-muted-foreground sm:h-8"
               onClick={() => sauvegardeMutation.mutate()}
               disabled={sauvegardeMutation.isPending}
             >
