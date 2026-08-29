@@ -53,6 +53,9 @@ export function createMatchsRouter(ctx: AppContext): Router {
   router.get('/:id/matchs', asyncHandler(async (req, res) => {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));
     if (!concours) throw ApiError.notFound('Concours non trouvé');
+    if (!concours.estPublic && ctx.authService && req.user?.role !== 'admin') {
+      throw ApiError.notFound('Concours non trouvé');
+    }
 
     const matchs: Array<Record<string, unknown>> = [];
     for (const phase of concours.phases) {
@@ -415,8 +418,11 @@ export function createMatchsRouter(ctx: AppContext): Router {
         config: {},
       };
 
-      // Après le tour 1 : créer la phase CONSOLANTE avec les perdants
-      if (dernierTour.numero === 1) {
+      // Après le tour 1 : créer la phase CONSOLANTE avec les perdants.
+      // Les phases Championnat A/B/C font déjà partie du classement final :
+      // leurs perdants ne doivent pas être reversés dans une consolante.
+      const estFormuleChampionnat = concours.formule.phases[0]?.type === TypePhase.CHAMPIONNAT;
+      if (dernierTour.numero === 1 && !estFormuleChampionnat) {
         const losers = elimStrategy.getFirstRoundLosers(elimContext);
         if (losers.length >= 2) {
           const consolPhaseId = `phase-${concours.phases.length + 1}`;
@@ -632,6 +638,9 @@ export function createMatchsRouter(ctx: AppContext): Router {
   router.get('/:id/classement', asyncHandler(async (req, res) => {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));
     if (!concours) throw ApiError.notFound('Concours non trouvé');
+    if (!concours.estPublic && ctx.authService && req.user?.role !== 'admin') {
+      throw ApiError.notFound('Concours non trouvé');
+    }
 
     if (concours.phases.length === 0) {
       throw ApiError.badRequest('Aucune phase n\'existe encore');

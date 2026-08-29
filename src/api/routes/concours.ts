@@ -60,6 +60,10 @@ const lancerTirageSchema = z.object({
   nbPoules: z.number().int().positive().optional(),
 });
 
+const modifierVisibiliteSchema = z.object({
+  estPublic: z.boolean(),
+});
+
 // ─── Helper ─────────────────────────────────────────────────────────────────
 
 function asyncHandler(fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) {
@@ -81,6 +85,7 @@ function concoursToJson(c: Concours) {
     lieu: c.lieu,
     organisateurId: c.organisateurId,
     statut: c.statut,
+    estPublic: c.estPublic,
     nbEquipesInscrites: c.nbEquipesInscrites,
     nbTerrains: c.terrains.length,
     nbPhases: c.phases.length,
@@ -100,15 +105,20 @@ export function createConcoursRouter(ctx: AppContext): Router {
   const protect = createRequireAdmin(ctx.authService);
 
   // GET / — Lister les concours
-  router.get('/', asyncHandler(async (_req, res) => {
+  router.get('/', asyncHandler(async (req, res) => {
     const concoursList = await ctx.concoursRepository.findAll();
-    res.json({ data: concoursList.map(concoursToJson) });
+    const estAdmin = !ctx.authService || req.user?.role === 'admin';
+    const concoursVisibles = estAdmin ? concoursList : concoursList.filter(c => c.estPublic);
+    res.json({ data: concoursVisibles.map(concoursToJson) });
   }));
 
   // GET /:id — Détail d'un concours
   router.get('/:id', asyncHandler(async (req, res) => {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));
     if (!concours) throw ApiError.notFound('Concours non trouvé');
+    if (!concours.estPublic && ctx.authService && req.user?.role !== 'admin') {
+      throw ApiError.notFound('Concours non trouvé');
+    }
 
     res.json({
       ...concoursToJson(concours),
@@ -292,7 +302,18 @@ export function createConcoursRouter(ctx: AppContext): Router {
     concours.archiver();
     await ctx.concoursRepository.save(concours);
 
-    res.json({ statut: concours.statut });
+    res.json({ statut: concours.statut, estPublic: concours.estPublic });
+  }));
+
+  // PATCH /:id/visibilite — Publier ou masquer un concours
+  router.patch('/:id/visibilite', protect, validateBody(modifierVisibiliteSchema), asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+
+    concours.definirVisibilite(req.body.estPublic);
+    await ctx.concoursRepository.save(concours);
+
+    res.json({ estPublic: concours.estPublic });
   }));
 
   // POST /:id/tirage — Lancer le tirage et générer la phase

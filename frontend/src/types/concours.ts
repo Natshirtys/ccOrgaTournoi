@@ -16,6 +16,7 @@ export interface ConcoursSummary {
   lieu: string;
   organisateurId: string;
   statut: StatutConcours;
+  estPublic: boolean;
   nbEquipesInscrites: number;
   nbTerrains: number;
   nbPhases: number;

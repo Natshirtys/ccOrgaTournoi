@@ -133,6 +133,7 @@ export interface ConcoursData {
   lieu: string;
   organisateurId: string;
   statut: string;
+  estPublic?: boolean;
   // FormuleConcours
   formule: {
     typeEquipe: string;

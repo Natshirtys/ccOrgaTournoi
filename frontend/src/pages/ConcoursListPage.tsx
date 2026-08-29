@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trophy } from 'lucide-react';
-import { fetchConcours, createConcours, ouvrirInscriptions, archiverConcours, supprimerConcours } from '@/api/concours';
+import { fetchConcours, createConcours, ouvrirInscriptions, archiverConcours, supprimerConcours, modifierVisibiliteConcours } from '@/api/concours';
 import { ConcoursTable } from '@/components/concours/ConcoursTable';
 import { ArchivesTab } from '@/components/concours/ArchivesTab';
 import { CreateConcoursDialog } from '@/components/concours/CreateConcoursDialog';
@@ -39,6 +39,11 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
 
   const supprimerMutation = useMutation({
     mutationFn: (id: string) => supprimerConcours(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['concours'] }),
+  });
+
+  const visibiliteMutation = useMutation({
+    mutationFn: ({ id, estPublic }: { id: string; estPublic: boolean }) => modifierVisibiliteConcours(id, estPublic),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['concours'] }),
   });
 
@@ -87,7 +92,7 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
       </div>
 
       <ActionError
-        error={ouvrirMutation.error ?? archiverMutation.error ?? supprimerMutation.error}
+        error={ouvrirMutation.error ?? archiverMutation.error ?? supprimerMutation.error ?? visibiliteMutation.error}
       />
 
       {/* Tabs */}
@@ -118,6 +123,8 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
             onSelectConcours={onSelectConcours}
             onArchiver={isAuthenticated ? (id) => archiverMutation.mutate(id) : undefined}
             onSupprimer={isAuthenticated ? (id) => supprimerMutation.mutate(id) : undefined}
+            onModifierVisibilite={isAuthenticated ? (id, estPublic) => visibiliteMutation.mutate({ id, estPublic }) : undefined}
+            visibilityUpdatingId={visibiliteMutation.isPending ? visibiliteMutation.variables?.id : undefined}
           />
         </TabsContent>
 
@@ -126,6 +133,8 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
             archives={archives}
             onSupprimer={isAuthenticated ? (id) => supprimerMutation.mutate(id) : undefined}
             onSelectConcours={onSelectConcours}
+            onModifierVisibilite={isAuthenticated ? (id, estPublic) => visibiliteMutation.mutate({ id, estPublic }) : undefined}
+            visibilityUpdatingId={visibiliteMutation.isPending ? visibiliteMutation.variables?.id : undefined}
           />
         </TabsContent>
       </Tabs>

@@ -15,6 +15,7 @@ import { ConcoursStatusBadge } from './ConcoursStatusBadge';
 import { cn } from '@/lib/utils';
 import type { ConcoursSummary } from '@/types/concours';
 import { concoursPath } from '@/lib/navigation';
+import { ConcoursVisibilitySwitch } from './ConcoursVisibilitySwitch';
 
 const TYPE_LABELS: Record<string, string> = {
   TETE_A_TETE: 'Tête-à-tête',
@@ -58,9 +59,11 @@ interface ConcoursTableProps {
   onSelectConcours: (id: string) => void;
   onArchiver?: (id: string) => void;
   onSupprimer?: (id: string) => void;
+  onModifierVisibilite?: (id: string, estPublic: boolean) => void;
+  visibilityUpdatingId?: string;
 }
 
-export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours, onArchiver, onSupprimer }: ConcoursTableProps) {
+export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours, onArchiver, onSupprimer, onModifierVisibilite, visibilityUpdatingId }: ConcoursTableProps) {
   if (concours.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-16">
@@ -130,6 +133,13 @@ export function ConcoursTable({ concours, onOuvrirInscriptions, onSelectConcours
 
           {/* Actions */}
           <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            {onModifierVisibilite && (
+              <ConcoursVisibilitySwitch
+                estPublic={c.estPublic}
+                disabled={visibilityUpdatingId === c.id}
+                onChange={(estPublic) => onModifierVisibilite(c.id, estPublic)}
+              />
+            )}
             {c.statut === 'BROUILLON' && onOuvrirInscriptions && (
               <Button size="sm" variant="outline" onClick={() => onOuvrirInscriptions(c.id)}>
                 Ouvrir inscriptions

@@ -3,6 +3,9 @@ import { Concours } from '../../domain/concours/entities/concours.js';
 import { Equipe } from '../../domain/concours/entities/equipe.js';
 import { Inscription } from '../../domain/concours/entities/inscription.js';
 import { Terrain } from '../../domain/concours/entities/terrain.js';
+import { Phase } from '../../domain/concours/entities/phase.js';
+import { Tour } from '../../domain/concours/entities/tour.js';
+import { Match } from '../../domain/concours/entities/match.js';
 import { StatutConcours, TypeEquipe, TypePhase, CritereClassement, TypeQualification } from '../../domain/shared/enums.js';
 import { DateRange, FormuleConcours, ReglementConcours, PhaseDefinition, QualificationRule } from '../../domain/shared/value-objects.js';
 import { InvalidStateTransitionError, InvariantViolationError } from '../../shared/types.js';
@@ -22,6 +25,21 @@ function creerConcoursTest(id = 'c1'): Concours {
     new DateRange(new Date('2025-06-15'), new Date('2025-06-15')),
     'Boulodrome Municipal', 'org1',
     creerFormuleTest(), new ReglementConcours(),
+  );
+}
+
+function creerConcoursChampionnatEnCours(id = 'c-championnat'): Concours {
+  const phase = new PhaseDefinition(
+    TypePhase.CHAMPIONNAT, 'integral',
+    [CritereClassement.POINTS], [CritereClassement.GOAL_AVERAGE_GENERAL],
+    null,
+  );
+  const formule = new FormuleConcours(TypeEquipe.TRIPLETTE, [phase], 4, 32);
+  return new Concours(
+    id, 'Championnat Test',
+    new DateRange(new Date('2025-06-15'), new Date('2025-06-15')),
+    'Boulodrome Municipal', 'org1',
+    formule, new ReglementConcours(), StatutConcours.EN_COURS,
   );
 }
 
@@ -129,6 +147,54 @@ describe('Machine à états Concours', () => {
     c.terminer();
     c.archiver();
     expect(c.statut).toBe(StatutConcours.ARCHIVE);
+    expect(c.estPublic).toBe(false);
+  });
+
+  it('permet de modifier simplement la visibilité, même après archivage', () => {
+    const c = creerConcoursTest();
+
+    expect(c.estPublic).toBe(true);
+    c.definirVisibilite(false);
+    expect(c.estPublic).toBe(false);
+    c.definirVisibilite(true);
+    expect(c.estPublic).toBe(true);
+  });
+
+  it('ignore et nettoie les consolantes parasites d\'un championnat à la clôture', () => {
+    const c = creerConcoursChampionnatEnCours();
+    const config = new PhaseDefinition(
+      TypePhase.CONSOLANTE, 'integral', [CritereClassement.POINTS], [], null,
+    );
+    const consolante = new Phase('phase-consolante', c.id, TypePhase.CONSOLANTE, 2, config);
+    const tour = new Tour('tour-consolante', consolante.id, 1);
+    tour.ajouterMatch(new Match('match-consolante', tour.id, 'eq1', 'eq2'));
+    consolante.ajouterTour(tour);
+    consolante.demarrer();
+    c.ajouterPhase(consolante);
+
+    c.terminer();
+
+    expect(c.statut).toBe(StatutConcours.TERMINE);
+    expect(c.phases.some(phase => phase.type === TypePhase.CONSOLANTE)).toBe(false);
+  });
+
+  it('indique le statut des vrais matchs qui empêchent la clôture', () => {
+    const c = new Concours(
+      'c-en-cours', 'Concours en cours',
+      new DateRange(new Date('2025-06-15'), new Date('2025-06-15')),
+      'Boulodrome Municipal', 'org1',
+      creerFormuleTest(), new ReglementConcours(), StatutConcours.EN_COURS,
+    );
+    const config = creerFormuleTest().phases[0];
+    const phase = new Phase('phase-poules', c.id, TypePhase.POULES, 1, config);
+    const tour = new Tour('tour-poules', phase.id, 1);
+    tour.ajouterMatch(new Match('match-programme', tour.id, 'eq1', 'eq2'));
+    phase.ajouterTour(tour);
+    phase.demarrer();
+    c.ajouterPhase(phase);
+
+    expect(() => c.terminer()).toThrow(/1 match\(s\) non terminé\(s\).*PROGRAMME : 1/);
+    expect(c.statut).toBe(StatutConcours.EN_COURS);
   });
 
   it('refuse une transition invalide (BROUILLON → EN_COURS)', () => {

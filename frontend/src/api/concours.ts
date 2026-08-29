@@ -72,8 +72,15 @@ export function terminerConcours(id: string): Promise<{ statut: string }> {
   return apiFetch(`/concours/${id}/terminer`, { method: 'POST' });
 }
 
-export function archiverConcours(id: string): Promise<{ statut: string }> {
+export function archiverConcours(id: string): Promise<{ statut: string; estPublic: boolean }> {
   return apiFetch(`/concours/${id}/archiver`, { method: 'POST' });
+}
+
+export function modifierVisibiliteConcours(id: string, estPublic: boolean): Promise<{ estPublic: boolean }> {
+  return apiFetch(`/concours/${id}/visibilite`, {
+    method: 'PATCH',
+    body: JSON.stringify({ estPublic }),
+  });
 }
 
 export function supprimerConcours(id: string): Promise<void> {

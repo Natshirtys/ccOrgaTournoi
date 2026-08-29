@@ -168,6 +168,7 @@ export function serialize(concours: Concours): ConcoursData {
     lieu: concours.lieu,
     organisateurId: concours.organisateurId,
     statut: concours.statut,
+    estPublic: concours.estPublic,
     formule: {
       typeEquipe: concours.formule.typeEquipe,
       phases: concours.formule.phases.map(serializePhaseDefinition),
@@ -347,5 +348,6 @@ export function deserialize(data: ConcoursData): Concours {
     terrains,
     phases,
     inscriptions,
+    data.estPublic,
   );
 }

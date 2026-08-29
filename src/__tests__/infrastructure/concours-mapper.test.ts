@@ -124,6 +124,7 @@ describe('concours-mapper', () => {
       expect(restored.lieu).toBe(original.lieu);
       expect(restored.organisateurId).toBe(original.organisateurId);
       expect(restored.statut).toBe(original.statut);
+      expect(restored.estPublic).toBe(original.estPublic);
 
       // Dates
       expect(restored.dates.debut.getTime()).toBe(original.dates.debut.getTime());
@@ -147,6 +148,14 @@ describe('concours-mapper', () => {
       expect(restored.reglement.nulAutorise).toBe(false);
       expect(restored.reglement.protectionClub).toBe(true);
       expect(restored.reglement.methodeAppariement).toBe(MethodeAppariement.ALEATOIRE);
+    });
+
+    it('rend privées les anciennes archives sans champ de visibilité', () => {
+      const data = serialize(buildConcours());
+      data.statut = StatutConcours.ARCHIVE;
+      delete data.estPublic;
+
+      expect(deserialize(data).estPublic).toBe(false);
     });
 
     it('reconstruit les terrains (disponible inclus)', () => {

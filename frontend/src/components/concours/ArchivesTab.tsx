@@ -17,6 +17,7 @@ import { fetchConcoursDetail } from '@/api/concours';
 import { fetchMatchs, fetchClassement } from '@/api/matchs';
 import type { ConcoursSummary } from '@/types/concours';
 import { concoursPath } from '@/lib/navigation';
+import { ConcoursVisibilitySwitch } from './ConcoursVisibilitySwitch';
 
 const TYPE_LABELS: Record<string, string> = {
   TETE_A_TETE: 'Tête-à-tête',
@@ -39,9 +40,11 @@ interface ArchivesTabProps {
   archives: ConcoursSummary[];
   onSupprimer?: (id: string) => void;
   onSelectConcours?: (id: string) => void;
+  onModifierVisibilite?: (id: string, estPublic: boolean) => void;
+  visibilityUpdatingId?: string;
 }
 
-export function ArchivesTab({ archives, onSupprimer, onSelectConcours }: ArchivesTabProps) {
+export function ArchivesTab({ archives, onSupprimer, onSelectConcours, onModifierVisibilite, visibilityUpdatingId }: ArchivesTabProps) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [exportError, setExportError] = useState<unknown>(null);
 
@@ -138,6 +141,13 @@ export function ArchivesTab({ archives, onSupprimer, onSelectConcours }: Archive
 
           {/* Actions */}
           <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            {onModifierVisibilite && (
+              <ConcoursVisibilitySwitch
+                estPublic={c.estPublic}
+                disabled={visibilityUpdatingId === c.id}
+                onChange={(estPublic) => onModifierVisibilite(c.id, estPublic)}
+              />
+            )}
             <Button
               size="sm"
               variant="outline"

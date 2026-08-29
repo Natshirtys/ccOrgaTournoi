@@ -218,4 +218,48 @@ describe('Routes protégées — avec auth activée', () => {
     const res = await request(app, 'GET', '/api/v1/concours');
     expect(res.status).toBe(200);
   });
+
+  it('masque un concours privé aux visiteurs mais le laisse accessible à l\'admin', async () => {
+    const token = authService.login(TEST_EMAIL, TEST_PASSWORD)!;
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'Concours confidentiel',
+      dateDebut: '2026-06-01',
+      typeEquipe: 'DOUBLETTE',
+    }, token);
+    const concoursId = createRes.body.id as string;
+
+    const hideRes = await request(
+      app,
+      'PATCH',
+      `/api/v1/concours/${concoursId}/visibilite`,
+      { estPublic: false },
+      token,
+    );
+    expect(hideRes.status).toBe(200);
+    expect(hideRes.body.estPublic).toBe(false);
+
+    const publicList = await request(app, 'GET', '/api/v1/concours');
+    expect(publicList.body.data).toEqual([]);
+    expect((await request(app, 'GET', `/api/v1/concours/${concoursId}`)).status).toBe(404);
+    expect((await request(app, 'GET', `/api/v1/concours/${concoursId}/matchs`)).status).toBe(404);
+
+    const adminDetail = await request(app, 'GET', `/api/v1/concours/${concoursId}`, undefined, token);
+    expect(adminDetail.status).toBe(200);
+    expect(adminDetail.body.estPublic).toBe(false);
+
+    const showRes = await request(
+      app,
+      'PATCH',
+      `/api/v1/concours/${concoursId}/visibilite`,
+      { estPublic: true },
+      token,
+    );
+    expect(showRes.status).toBe(200);
+    expect((await request(app, 'GET', `/api/v1/concours/${concoursId}`)).status).toBe(200);
+  });
+
+  it('refuse de modifier la visibilité sans authentification', async () => {
+    const res = await request(app, 'PATCH', '/api/v1/concours/inconnu/visibilite', { estPublic: false });
+    expect(res.status).toBe(401);
+  });
 });

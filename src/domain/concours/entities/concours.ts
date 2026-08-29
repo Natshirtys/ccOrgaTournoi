@@ -1,5 +1,5 @@
 import { AggregateRoot, EntityId, InvalidStateTransitionError, InvariantViolationError } from '../../../shared/types.js';
-import { StatutConcours } from '../../shared/enums.js';
+import { StatutConcours, TypePhase } from '../../shared/enums.js';
 import { DateRange, FormuleConcours, ReglementConcours } from '../../shared/value-objects.js';
 import { Terrain } from './terrain.js';
 import { Phase } from './phase.js';
@@ -21,6 +21,7 @@ export class Concours extends AggregateRoot {
   private _terrains: Terrain[];
   private _phases: Phase[];
   private _inscriptions: Inscription[];
+  private _estPublic: boolean;
 
   constructor(
     id: EntityId,
@@ -34,12 +35,15 @@ export class Concours extends AggregateRoot {
     terrains: Terrain[] = [],
     phases: Phase[] = [],
     inscriptions: Inscription[] = [],
+    estPublic?: boolean,
   ) {
     super(id);
     this._statut = statut;
     this._terrains = terrains;
     this._phases = phases;
     this._inscriptions = inscriptions;
+    // Rétrocompatibilité : les concours existants restent visibles, sauf les archives.
+    this._estPublic = estPublic ?? statut !== StatutConcours.ARCHIVE;
   }
 
   // --- Getters ---
@@ -66,6 +70,14 @@ export class Concours extends AggregateRoot {
 
   get nbEquipesInscrites(): number {
     return this.inscriptionsActives.length;
+  }
+
+  get estPublic(): boolean {
+    return this._estPublic;
+  }
+
+  definirVisibilite(estPublic: boolean): void {
+    this._estPublic = estPublic;
   }
 
   // --- Gestion des terrains ---
@@ -110,19 +122,39 @@ export class Concours extends AggregateRoot {
   }
 
   terminer(): void {
-    const matchsEnCours = this._phases.some(p =>
-      p.tours.some(t =>
-        t.matchs.some(m => !m.isTermine),
-      ),
+    const estFormuleChampionnat = this.formule.phases[0]?.type === TypePhase.CHAMPIONNAT;
+    const phasesPertinentes = estFormuleChampionnat
+      ? this._phases.filter(p => p.type !== TypePhase.CONSOLANTE)
+      : this._phases;
+    const matchsNonTermines = phasesPertinentes.flatMap(p =>
+      p.tours.flatMap(t => t.matchs.filter(m => !m.isTermine)),
     );
-    if (matchsEnCours) {
-      throw new InvariantViolationError('Impossible de terminer : des matchs sont encore en cours');
+
+    if (matchsNonTermines.length > 0) {
+      const statuts = new Map<string, number>();
+      for (const match of matchsNonTermines) {
+        statuts.set(match.statut, (statuts.get(match.statut) ?? 0) + 1);
+      }
+      const detailStatuts = [...statuts.entries()]
+        .map(([statut, total]) => `${statut} : ${total}`)
+        .join(', ');
+      throw new InvariantViolationError(
+        `Impossible de terminer : ${matchsNonTermines.length} match(s) non terminé(s) (${detailStatuts})`,
+      );
     }
+
     this.transitionVers(StatutConcours.TERMINE);
+
+    // Nettoyage rétroactif des consolantes créées à tort par les anciennes
+    // versions pour les phases Championnat A/B/C.
+    if (estFormuleChampionnat) {
+      this._phases = phasesPertinentes;
+    }
   }
 
   archiver(): void {
     this.transitionVers(StatutConcours.ARCHIVE);
+    this._estPublic = false;
   }
 
   // --- Inscriptions ---
