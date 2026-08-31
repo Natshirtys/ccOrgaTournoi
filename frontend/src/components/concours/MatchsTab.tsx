@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Play, Shuffle } from 'lucide-react';
+import { CheckCircle2, FileText, Play, Shuffle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/ui/action-error';
@@ -101,20 +101,25 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
     enabled: concours.statut === 'EN_COURS' || concours.statut === 'TERMINE' || concours.statut === 'ARCHIVE',
   });
   const allMatchs = data?.data ?? [];
+  const isMelee = concours.formule.typePhase === 'MELEE' || concours.formule.typePhase === 'MELEE_TOURNANTE';
   const terrainsDisponibles = new Set(
     concours.terrains.filter((terrain) => terrain.disponible).map((terrain) => terrain.id),
   );
+  const dernierTourMelee = isMelee && allMatchs.length > 0
+    ? Math.max(...allMatchs.map((match) => match.tourNumero))
+    : null;
   const matchsPrets = allMatchs.filter(
     (match) => match.statut === 'PROGRAMME'
       && match.equipeBId !== null
       && match.terrainId !== null
-      && terrainsDisponibles.has(match.terrainId),
+      && (isMelee
+        ? match.tourNumero === dernierTourMelee
+        : terrainsDisponibles.has(match.terrainId)),
   );
   const demarrerTousMutation = useMutation({
     mutationFn: () => demarrerTousLesMatchs(concours.id, matchsPrets.map((match) => match.id)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['concours', concours.id] }),
   });
-  const isMelee = concours.formule.typePhase === 'MELEE' || concours.formule.typePhase === 'MELEE_TOURNANTE';
   const canRedraw = !readOnly && isMelee && allMatchs.length > 0 && allMatchs
     .filter((match) => match.tourNumero === Math.max(...allMatchs.map((item) => item.tourNumero)))
     .every((match) => match.statut === 'PROGRAMME');
@@ -176,7 +181,9 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
       phaseType,
       phaseNom,
       tours: Array.from(tours.entries())
-        .sort(([a], [b]) => a - b)
+        .sort(([a], [b]) => (
+          phaseType === 'MELEE' || phaseType === 'MELEE_TOURNANTE' ? b - a : a - b
+        ))
         .map(([tourNum, data]) => ({ tourNum, ...data })),
     }));
   }, [data, phaseNomLookup]);
@@ -239,7 +246,7 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
                 disabled={demarrerTousMutation.isPending}
               >
                 <Play className="h-4 w-4 fill-current" />
-                Tout démarrer
+                {isMelee ? 'Démarrer la partie' : 'Tout démarrer'}
                 <span className="rounded-full bg-primary-foreground/15 px-2 py-0.5 text-xs tabular-nums">
                   {matchsPrets.length}
                 </span>
@@ -247,9 +254,11 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Démarrer tous les matchs prêts ?</AlertDialogTitle>
+                <AlertDialogTitle>{isMelee ? 'Démarrer toute la partie ?' : 'Démarrer tous les matchs prêts ?'}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Les {matchsPrets.length} matchs ayant un terrain affecté passeront en cours en même temps.
+                  {isMelee
+                    ? `Les ${matchsPrets.length} matchs de la partie passeront en cours en même temps.`
+                    : `Les ${matchsPrets.length} matchs ayant un terrain affecté passeront en cours en même temps.`}
                   Vous pourrez remettre individuellement un match en attente tant qu’aucun score n’est saisi.
                 </AlertDialogDescription>
               </AlertDialogHeader>
@@ -396,12 +405,31 @@ function TablePhaseView({
 }) {
   return (
     <>
-      {tours.map(({ tourNum, nom, matchs }) => (
-        <Card key={tourNum}>
-          <CardHeader>
-            <CardTitle className="text-lg">
-              {nom ?? `Tour ${tourNum}`}
-            </CardTitle>
+      {tours.map(({ tourNum, nom, matchs }, index) => {
+        const termine = matchs.every((match) => ['TERMINE', 'FORFAIT', 'ABANDON', 'BYE'].includes(match.statut));
+        const partieCourante = index === 0 && !termine;
+        return (
+        <Card
+          key={tourNum}
+          className={termine
+            ? 'overflow-hidden border-emerald-500/20 bg-emerald-500/[0.025] shadow-none'
+            : partieCourante
+              ? 'overflow-hidden border-primary/35 shadow-md shadow-primary/5'
+              : 'overflow-hidden'}
+        >
+          <CardHeader className={termine ? 'border-b border-emerald-500/15 bg-emerald-500/[0.06]' : partieCourante ? 'border-b border-primary/15 bg-primary/[0.05]' : ''}>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className={termine ? 'text-lg text-foreground/75' : 'text-lg'}>
+                {nom ?? `Tour ${tourNum}`}
+              </CardTitle>
+              {termine ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                  <CheckCircle2 className="h-3.5 w-3.5" />Terminée
+                </span>
+              ) : partieCourante ? (
+                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">Partie actuelle</span>
+              ) : null}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -433,7 +461,8 @@ function TablePhaseView({
             </div>
           </CardContent>
         </Card>
-      ))}
+        );
+      })}
     </>
   );
 }

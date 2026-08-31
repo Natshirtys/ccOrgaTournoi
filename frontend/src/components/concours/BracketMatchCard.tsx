@@ -122,7 +122,7 @@ export function BracketMatchCard({
   const demarrerMutation = useMutation({
     mutationFn: () => demarrerMatch(concoursId, match.id),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['concours', concoursId, 'matchs'] }),
+      queryClient.invalidateQueries({ queryKey: ['concours', concoursId] }),
   });
 
   const terrainMutation = useMutation({

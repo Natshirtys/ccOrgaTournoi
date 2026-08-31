@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/auth/AuthContext';
 import { ActionError } from '@/components/ui/action-error';
-import { ArrowRight, CheckCircle2, Compass, Download, Info } from 'lucide-react';
+import { ArrowRight, CheckCircle2, ChevronDown, ChevronUp, Compass, Download, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -201,6 +202,7 @@ interface ConcoursInfoCardProps {
 }
 
 export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCardProps) {
+  const [detailsOpen, setDetailsOpen] = useState(true);
   const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
   const invalidateAll = () => {
@@ -285,10 +287,24 @@ export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCard
               </DialogContent>
             </Dialog>
           </div>
-          <ConcoursStatusBadge statut={statut} />
+          <div className="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+            <ConcoursStatusBadge statut={statut} />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-10 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground sm:h-8"
+              aria-expanded={detailsOpen}
+              aria-controls={`concours-details-${concours.id}`}
+              onClick={() => setDetailsOpen((open) => !open)}
+            >
+              {detailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              <span>{detailsOpen ? 'Réduire' : 'Afficher les détails'}</span>
+            </Button>
+          </div>
         </div>
       </CardHeader>
-      <CardContent className="px-4 sm:px-6">
+      {detailsOpen && <CardContent id={`concours-details-${concours.id}`} className="px-4 sm:px-6">
         <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
           {concours.lieu && (
             <div>
@@ -451,7 +467,7 @@ export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCard
         <div className="mt-3">
           <ActionError error={actionError} />
         </div>
-      </CardContent>
+      </CardContent>}
     </Card>
   );
 }

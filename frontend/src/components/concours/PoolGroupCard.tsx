@@ -134,7 +134,7 @@ function PoolMatchActions({
   const demarrerMutation = useMutation({
     mutationFn: () => demarrerMatch(concoursId, match.id),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['concours', concoursId, 'matchs'] }),
+      queryClient.invalidateQueries({ queryKey: ['concours', concoursId] }),
   });
 
   if (readOnly) return null;

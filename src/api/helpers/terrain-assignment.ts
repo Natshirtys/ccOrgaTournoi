@@ -24,7 +24,7 @@ export function assignerTerrainsAuTour(concours: Concours, tour: Tour): void {
 
   // 2. Terrains disponibles
   const terrainsDispos = concours.terrains
-    .filter((t) => !terrainsOccupes.has(t.id))
+    .filter((t) => t.disponible && !terrainsOccupes.has(t.id))
     .map((t) => t.id);
 
   // 3. Construire l'historique terrain par équipe (tous matchs passés du concours)

@@ -40,8 +40,7 @@ export function SaisirScoreDialog({
         scoreEquipeB: parseInt(scoreB, 10),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['concours', concoursId, 'matchs'] });
-      queryClient.invalidateQueries({ queryKey: ['concours', concoursId, 'classement'] });
+      queryClient.invalidateQueries({ queryKey: ['concours', concoursId] });
       setOpen(false);
       setScoreA('');
       setScoreB('');

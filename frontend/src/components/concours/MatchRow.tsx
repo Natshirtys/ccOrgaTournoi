@@ -33,15 +33,14 @@ export function MatchRow({ match, concoursId, equipeANom, equipeBNom, terrains =
   const demarrerMutation = useMutation({
     mutationFn: () => demarrerMatch(concoursId, match.id),
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['concours', concoursId, 'matchs'] }),
+      queryClient.invalidateQueries({ queryKey: ['concours', concoursId] }),
   });
 
   const forfaitMutation = useMutation({
     mutationFn: (equipeId: string) =>
       declarerForfait(concoursId, match.id, { equipeDeclarantForfaitId: equipeId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['concours', concoursId, 'matchs'] });
-      queryClient.invalidateQueries({ queryKey: ['concours', concoursId, 'classement'] });
+      queryClient.invalidateQueries({ queryKey: ['concours', concoursId] });
     },
   });
 
