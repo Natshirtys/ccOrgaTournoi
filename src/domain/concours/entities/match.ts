@@ -28,6 +28,8 @@ export class Match extends Entity {
     statut?: StatutMatch,
     score?: Score | null,
     resultat?: ResultatMatch | null,
+    public readonly participantIdsEquipeA: readonly EntityId[] = [],
+    public readonly participantIdsEquipeB: readonly EntityId[] = [],
   ) {
     super(id);
     // BYE automatique si pas d'adversaire

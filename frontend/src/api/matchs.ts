@@ -79,3 +79,7 @@ export function assignerTerrain(
 export function fetchClassement(concoursId: string): Promise<{ phaseId: string; classement: LigneClassementDto[] }> {
   return apiFetch(`/concours/${concoursId}/classement`);
 }
+
+export function refaireTirageMelee(concoursId: string): Promise<void> {
+  return apiFetch(`/concours/${concoursId}/melee/refaire-tirage`, { method: 'POST' });
+}

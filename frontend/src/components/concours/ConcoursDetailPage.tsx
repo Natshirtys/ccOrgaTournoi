@@ -12,9 +12,9 @@ import { ResumeTab } from './ResumeTab';
 import { useAuth } from '@/auth/AuthContext';
 import type { ConcoursDetail, StatutConcours } from '@/types/concours';
 
-function getDefaultTab(statut: StatutConcours, hasSystemeSuisse: boolean): string {
+function getDefaultTab(statut: StatutConcours, hasClassement: boolean): string {
   if (statut === 'EN_COURS') return 'matchs';
-  if (statut === 'TERMINE' || statut === 'ARCHIVE') return hasSystemeSuisse ? 'classement' : 'matchs';
+  if (statut === 'TERMINE' || statut === 'ARCHIVE') return hasClassement ? 'classement' : 'matchs';
   return 'inscriptions';
 }
 
@@ -35,13 +35,14 @@ function ConcoursDetailContent({
   onBack,
 }: ConcoursDetailContentProps) {
   const hasPhases = concours.phases.length > 0;
-  const hasSystemeSuisse = concours.phases.some((p) => p.type === 'SYSTEME_SUISSE');
+  const hasClassement = concours.phases.some((p) => ['SYSTEME_SUISSE', 'MELEE', 'MELEE_TOURNANTE'].includes(p.type));
+  const isMelee = concours.formule.typePhase === 'MELEE' || concours.formule.typePhase === 'MELEE_TOURNANTE';
   const matchsEnabled = concours.statut === 'EN_COURS'
     || concours.statut === 'TERMINE'
     || concours.statut === 'ARCHIVE';
   const readOnly = !isAuthenticated || concours.statut === 'ARCHIVE';
   const [activeTab, setActiveTab] = useState(() =>
-    getDefaultTab(concours.statut, hasSystemeSuisse),
+    getDefaultTab(concours.statut, hasClassement),
   );
 
   return (
@@ -60,14 +61,12 @@ function ConcoursDetailContent({
             <TabsTrigger value="matchs" className="min-h-10 sm:min-h-0" disabled={!matchsEnabled}>
               Matchs
             </TabsTrigger>
-            {hasSystemeSuisse && (
+            {hasClassement && (
               <TabsTrigger value="classement" className="min-h-10 sm:min-h-0" disabled={!hasPhases}>
                 Classement
               </TabsTrigger>
             )}
-            <TabsTrigger value="resume" className="min-h-10 sm:min-h-0" disabled={!matchsEnabled}>
-              Résumé
-            </TabsTrigger>
+            {!isMelee && <TabsTrigger value="resume" className="min-h-10 sm:min-h-0" disabled={!matchsEnabled}>Résumé</TabsTrigger>}
           </TabsList>
         </div>
         <TabsContent value="inscriptions">
@@ -79,14 +78,12 @@ function ConcoursDetailContent({
         <TabsContent value="matchs">
           <MatchsTab concours={concours} readOnly={readOnly} />
         </TabsContent>
-        {hasSystemeSuisse && (
+        {hasClassement && (
           <TabsContent value="classement">
             <ClassementTab concours={concours} />
           </TabsContent>
         )}
-        <TabsContent value="resume">
-          <ResumeTab concours={concours} />
-        </TabsContent>
+        {!isMelee && <TabsContent value="resume"><ResumeTab concours={concours} /></TabsContent>}
       </Tabs>
     </div>
   );

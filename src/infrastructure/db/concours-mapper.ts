@@ -9,6 +9,7 @@ import { Match } from '../../domain/concours/entities/match.js';
 import { Terrain } from '../../domain/concours/entities/terrain.js';
 import { Inscription } from '../../domain/concours/entities/inscription.js';
 import { Equipe } from '../../domain/concours/entities/equipe.js';
+import { ParticipantMelee } from '../../domain/concours/entities/participant-melee.js';
 import { Classement, LigneClassement } from '../../domain/concours/entities/classement.js';
 import {
   DateRange,
@@ -32,6 +33,7 @@ import {
   MethodeAppariement,
   TypeResultat,
   TypeQualification,
+  PosteMelee,
 } from '../../domain/shared/enums.js';
 import {
   ConcoursData,
@@ -82,6 +84,8 @@ function serializeMatch(m: Match): MatchData {
       pointsAttribuesA: m.resultat.pointsAttribuesA,
       pointsAttribuesB: m.resultat.pointsAttribuesB,
     } : null,
+    participantIdsEquipeA: [...m.participantIdsEquipeA],
+    participantIdsEquipeB: [...m.participantIdsEquipeB],
   };
 }
 
@@ -237,6 +241,13 @@ export function serialize(concours: Concours): ConcoursData {
     terrains: [...concours.terrains].map(serializeTerrain),
     phases: [...concours.phases].map(serializePhase),
     inscriptions: [...concours.inscriptions].map(serializeInscription),
+    participantsMelee: [...concours.participantsMelee].map((participant) => ({
+      id: participant.id,
+      concoursId: participant.concoursId,
+      nom: participant.nom,
+      poste: participant.poste,
+      actif: participant.actif,
+    })),
   };
 }
 
@@ -281,6 +292,8 @@ function deserializeMatch(d: MatchData): Match {
     d.statut as StatutMatch,
     score,
     resultat,
+    d.participantIdsEquipeA ?? [],
+    d.participantIdsEquipeB ?? [],
   );
 }
 
@@ -402,6 +415,13 @@ export function deserialize(data: ConcoursData): Concours {
   const terrains = data.terrains.map(deserializeTerrain);
   const phases = data.phases.map(deserializePhase);
   const inscriptions = data.inscriptions.map(deserializeInscription);
+  const participantsMelee = (data.participantsMelee ?? []).map((participant) => new ParticipantMelee(
+    participant.id,
+    participant.concoursId,
+    participant.nom,
+    participant.poste as PosteMelee,
+    participant.actif,
+  ));
 
   return new Concours(
     data.id,
@@ -419,5 +439,6 @@ export function deserialize(data: ConcoursData): Concours {
     data.derniereActionAnnulable
       ? deserializeActionAnnulable(data.derniereActionAnnulable)
       : null,
+    participantsMelee,
   );
 }

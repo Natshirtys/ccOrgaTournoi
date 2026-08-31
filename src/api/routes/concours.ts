@@ -11,8 +11,9 @@ import { Terrain } from '../../domain/concours/entities/terrain.js';
 import { Phase } from '../../domain/concours/entities/phase.js';
 import { Tour } from '../../domain/concours/entities/tour.js';
 import { Match } from '../../domain/concours/entities/match.js';
+import { ParticipantMelee } from '../../domain/concours/entities/participant-melee.js';
 import { DateRange, FormuleConcours, ReglementConcours, PhaseDefinition, QualificationRule } from '../../domain/shared/value-objects.js';
-import { TypeEquipe, TypePhase, CritereClassement, TypeQualification, StatutConcours } from '../../domain/shared/enums.js';
+import { TypeEquipe, TypePhase, CritereClassement, TypeQualification, StatutConcours, PosteMelee, MethodeAppariement } from '../../domain/shared/enums.js';
 import { IntegralDrawStrategy } from '../../engine/strategies/draw/integral-draw-strategy.js';
 import { assignerTerrainsAuTour } from '../helpers/terrain-assignment.js';
 import { PoolPhaseStrategy } from '../../engine/strategies/phase/pool-phase-strategy.js';
@@ -22,6 +23,7 @@ import { SwissSystemStrategy } from '../../engine/strategies/phase/swiss-system-
 import { deserialize, serialize } from '../../infrastructure/db/concours-mapper.js';
 import type { ConcoursData } from '../../infrastructure/db/types.js';
 import { obtenirProchaineAction } from '../helpers/next-action.js';
+import { generateFixedMeleeTeams, generateRotatingMeleeRound, pairFixedMeleeTeams, validateMeleePlayerCount } from '../../engine/strategies/melee/melee-scheduler.js';
 
 
 // ─── Schemas Zod ────────────────────────────────────────────────────────────
@@ -37,6 +39,8 @@ const creerConcoursSchema = z.object({
   nbEquipesMax: z.number().int().min(2).default(32),
   nbTerrains: z.number().int().min(0).max(50).default(0),
   typePhase: z.nativeEnum(TypePhase).default(TypePhase.POULES),
+  nbParties: z.number().int().min(1).max(50).default(4),
+  methodeAppariement: z.nativeEnum(MethodeAppariement).default(MethodeAppariement.ALEATOIRE),
   reglement: z.object({
     scoreVictoire: z.number().int().positive().default(13),
     pointsVictoire: z.number().int().min(0).default(2),
@@ -51,6 +55,11 @@ const inscrireEquipeSchema = z.object({
   joueurs: z.array(z.string().trim().min(1)).default([]),
   club: z.string().trim().default(''),
   teteDeSerie: z.boolean().default(false),
+});
+
+const participantMeleeSchema = z.object({
+  nom: z.string().trim().min(1),
+  poste: z.nativeEnum(PosteMelee),
 });
 
 const ajouterTerrainSchema = z.object({
@@ -103,6 +112,7 @@ function concoursToJson(c: Concours) {
     statut: c.statut,
     estPublic: c.estPublic,
     nbEquipesInscrites: c.nbEquipesInscrites,
+    nbParticipants: c.participantsMeleeActifs.length,
     nbTerrains: c.terrains.length,
     nbPhases: c.phases.length,
     formule: {
@@ -156,6 +166,12 @@ export function createConcoursRouter(ctx: AppContext): Router {
         club: i.equipe.clubId,
         teteDeSerie: i.teteDeSerie,
       })),
+      participantsMelee: concours.participantsMelee.map((participant) => ({
+        id: participant.id,
+        nom: participant.nom,
+        poste: participant.poste,
+        actif: participant.actif,
+      })),
       phases: concours.phases.map((p) => ({
         id: p.id, type: p.type, ordre: p.ordre, statut: p.statut,
         nom: p.nom,
@@ -205,12 +221,19 @@ export function createConcoursRouter(ctx: AppContext): Router {
     const id = ctx.concoursRepository.nextId();
 
     const dates = new DateRange(new Date(data.dateDebut), new Date(data.dateFin ?? data.dateDebut));
+    const estMelee = data.typePhase === TypePhase.MELEE || data.typePhase === TypePhase.MELEE_TOURNANTE;
+    if (estMelee && ![TypeEquipe.DOUBLETTE, TypeEquipe.TRIPLETTE].includes(data.typeEquipe)) {
+      throw ApiError.badRequest('La mêlée est disponible uniquement en doublette ou en triplette');
+    }
     const phaseDefinition = new PhaseDefinition(
       data.typePhase,
       'integral',
-      [CritereClassement.POINTS, CritereClassement.GOAL_AVERAGE_GENERAL],
+      estMelee
+        ? [CritereClassement.NOMBRE_VICTOIRES, CritereClassement.GOAL_AVERAGE_GENERAL, CritereClassement.POINTS_MARQUES]
+        : [CritereClassement.POINTS, CritereClassement.GOAL_AVERAGE_GENERAL],
       [CritereClassement.POINTS_MARQUES],
-      new QualificationRule(TypeQualification.TOP_N, 2),
+      estMelee ? null : new QualificationRule(TypeQualification.TOP_N, 2),
+      estMelee ? { nbParties: data.nbParties } : {},
     );
     const formule = new FormuleConcours(
       data.typeEquipe,
@@ -218,7 +241,14 @@ export function createConcoursRouter(ctx: AppContext): Router {
       data.nbEquipesMin,
       data.nbEquipesMax,
     );
-    const reglement = new ReglementConcours(data.reglement);
+    const reglement = new ReglementConcours({
+      ...data.reglement,
+      methodeAppariement: data.methodeAppariement,
+      nulAutorise: estMelee ? false : data.reglement.nulAutorise,
+      criteresClassement: estMelee
+        ? [CritereClassement.NOMBRE_VICTOIRES, CritereClassement.GOAL_AVERAGE_GENERAL, CritereClassement.POINTS_MARQUES]
+        : undefined,
+    });
 
     const organisateurId = data.organisateurId ?? req.user?.email ?? 'anonymous';
     const concours = new Concours(id, data.nom, dates, data.lieu, organisateurId, formule, reglement);
@@ -303,6 +333,39 @@ export function createConcoursRouter(ctx: AppContext): Router {
       equipeNom: data.nomEquipe,
       nbInscrites: concours.nbEquipesInscrites,
     });
+  }));
+
+  router.post('/:id/participants-melee', protect, validateBody(participantMeleeSchema), asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+    const participant = new ParticipantMelee(crypto.randomUUID(), concours.id, req.body.nom, req.body.poste);
+    concours.inscrireParticipantMelee(participant);
+    await ctx.concoursRepository.save(concours);
+    res.status(201).json({ id: participant.id, nom: participant.nom, poste: participant.poste, actif: participant.actif });
+  }));
+
+  router.patch('/:id/participants-melee/:participantId', protect, validateBody(participantMeleeSchema), asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+    concours.modifierParticipantMelee(param(req.params.participantId), req.body.nom, req.body.poste);
+    await ctx.concoursRepository.save(concours);
+    res.json({ id: param(req.params.participantId), ...req.body });
+  }));
+
+  router.patch('/:id/participants-melee/:participantId/actif', protect, validateBody(z.object({ actif: z.boolean() })), asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+    concours.definirParticipantMeleeActif(param(req.params.participantId), req.body.actif);
+    await ctx.concoursRepository.save(concours);
+    res.json({ id: param(req.params.participantId), actif: req.body.actif });
+  }));
+
+  router.delete('/:id/participants-melee/:participantId', protect, asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+    concours.supprimerParticipantMelee(param(req.params.participantId));
+    await ctx.concoursRepository.save(concours);
+    res.status(204).end();
   }));
 
   // PATCH /:id/inscriptions/:inscriptionId — Modifier une équipe inscrite
@@ -406,6 +469,39 @@ export function createConcoursRouter(ctx: AppContext): Router {
     // Récupérer les équipes inscrites (avant lancerTirage pour validation)
     const equipeIds = concours.inscriptionsActives.map((i) => i.equipeId);
     const phaseType = concours.formule.phases[0].type;
+    const estMelee = phaseType === TypePhase.MELEE || phaseType === TypePhase.MELEE_TOURNANTE;
+    if (estMelee) {
+      const participants = concours.participantsMeleeActifs;
+      const joueursParEquipe = concours.formule.joueurParEquipe;
+      try { validateMeleePlayerCount(participants.length, joueursParEquipe); }
+      catch (error) { throw ApiError.badRequest((error as Error).message); }
+
+      concours.lancerTirage();
+      const phaseId = `phase-${concours.phases.length + 1}`;
+      const baseConfig = concours.formule.phases[0];
+      const phase = new Phase(phaseId, concours.id, phaseType, concours.phases.length + 1, baseConfig);
+      concours.ajouterPhase(phase);
+      const joueurs = participants.map((participant) => ({ id: participant.id, poste: participant.poste }));
+      const compositions = phaseType === TypePhase.MELEE_TOURNANTE
+        ? generateRotatingMeleeRound(joueurs, joueursParEquipe, [])
+        : pairFixedMeleeTeams(generateFixedMeleeTeams(joueurs, joueursParEquipe), [], concours.reglement.methodeAppariement === MethodeAppariement.SUISSE_STANDARD);
+      const tour = new Tour(`${phaseId}-tour-1`, phaseId, 1, undefined, [], 'Partie 1');
+      compositions.forEach((composition, index) => {
+        const idEquipeA = meleeTeamId(composition.equipeA);
+        const idEquipeB = meleeTeamId(composition.equipeB);
+        tour.ajouterMatch(new Match(
+          `${tour.id}-match-${index + 1}`, tour.id, idEquipeA, idEquipeB, null, null, undefined, null, null,
+          composition.equipeA, composition.equipeB,
+        ));
+      });
+      phase.ajouterTour(tour);
+      assignerTerrainsAuTour(concours, tour);
+      concours.validerTirage();
+      phase.demarrer();
+      await ctx.concoursRepository.save(concours);
+      res.status(201).json({ statut: concours.statut, phaseId, phaseType, nbTours: 1 });
+      return;
+    }
     const nbPoules = req.body.nbPoules ?? (
       (phaseType === TypePhase.POULES || phaseType === TypePhase.CHAMPIONNAT)
         ? Math.floor(equipeIds.length / 4)
@@ -551,6 +647,10 @@ export function createConcoursRouter(ctx: AppContext): Router {
   }));
 
   return router;
+}
+
+function meleeTeamId(participantIds: readonly string[]): string {
+  return `melee-${[...participantIds].sort().join('-')}`;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

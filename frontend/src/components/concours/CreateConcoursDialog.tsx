@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { CreateConcoursPayload, TypeEquipe, TypePhase } from '@/types/concours';
+import type { CreateConcoursPayload, MethodeAppariement, TypeEquipe, TypePhase } from '@/types/concours';
 
 interface CreateConcoursDialogProps {
   onSubmit: (payload: CreateConcoursPayload) => Promise<unknown>;
@@ -34,6 +34,8 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
   const [typeEquipe, setTypeEquipe] = useState<TypeEquipe>('DOUBLETTE');
   const [typePhase, setTypePhase] = useState<TypePhase>('POULES');
   const [nbTerrains, setNbTerrains] = useState(8);
+  const [nbParties, setNbParties] = useState(4);
+  const [methodeAppariement, setMethodeAppariement] = useState<MethodeAppariement>('ALEATOIRE');
   const [submitError, setSubmitError] = useState<unknown>(null);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -47,6 +49,8 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
         typeEquipe,
         typePhase,
         nbTerrains,
+        nbParties,
+        methodeAppariement,
       });
       setOpen(false);
       setNom('');
@@ -55,6 +59,8 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
       setTypeEquipe('DOUBLETTE');
       setTypePhase('POULES');
       setNbTerrains(8);
+      setNbParties(4);
+      setMethodeAppariement('ALEATOIRE');
     } catch (error) {
       setSubmitError(error);
     }
@@ -65,7 +71,7 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
       <DialogTrigger asChild>
         <Button className="h-10 sm:h-9">Nouveau concours</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Créer un concours</DialogTitle>
           <DialogDescription>Renseignez les informations du concours.</DialogDescription>
@@ -98,16 +104,20 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="TETE_A_TETE">Tête-à-tête</SelectItem>
+                {!['MELEE', 'MELEE_TOURNANTE'].includes(typePhase) && <SelectItem value="TETE_A_TETE">Tête-à-tête</SelectItem>}
                 <SelectItem value="DOUBLETTE">Doublette</SelectItem>
                 <SelectItem value="TRIPLETTE">Triplette</SelectItem>
-                <SelectItem value="QUADRETTE">Quadrette</SelectItem>
+                {!['MELEE', 'MELEE_TOURNANTE'].includes(typePhase) && <SelectItem value="QUADRETTE">Quadrette</SelectItem>}
               </SelectContent>
             </Select>
           </div>
           <div className="grid gap-2">
             <Label>Type de phase</Label>
-            <Select value={typePhase} onValueChange={(v) => setTypePhase(v as TypePhase)}>
+            <Select value={typePhase} onValueChange={(v) => {
+              const next = v as TypePhase;
+              setTypePhase(next);
+              if (['MELEE', 'MELEE_TOURNANTE'].includes(next) && !['DOUBLETTE', 'TRIPLETTE'].includes(typeEquipe)) setTypeEquipe('DOUBLETTE');
+            }}>
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -116,9 +126,34 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
                 <SelectItem value="SYSTEME_SUISSE">Système Suisse (Aurard)</SelectItem>
                 <SelectItem value="CHAMPIONNAT">Round Robin</SelectItem>
                 <SelectItem value="ELIMINATION_SIMPLE">Élimination directe + complémentaire</SelectItem>
+                <SelectItem value="MELEE">À la mêlée (équipes fixes)</SelectItem>
+                <SelectItem value="MELEE_TOURNANTE">À la mêlée tournante</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {['MELEE', 'MELEE_TOURNANTE'].includes(typePhase) && (
+            <div className="grid gap-4 rounded-xl border border-primary/20 bg-primary/[0.04] p-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="nbParties">Nombre de parties</Label>
+                <Input id="nbParties" type="number" min={1} max={50} value={nbParties} onChange={(e) => setNbParties(Number(e.target.value) || 1)} />
+              </div>
+              {typePhase === 'MELEE' && (
+                <div className="grid gap-2">
+                  <Label>Appariement</Label>
+                  <Select value={methodeAppariement} onValueChange={(value) => setMethodeAppariement(value as MethodeAppariement)}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALEATOIRE">Aléatoire</SelectItem>
+                      <SelectItem value="SUISSE_STANDARD">Gagnants contre gagnants</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground sm:col-span-2">
+                Inscriptions individuelles, postes préférentiels et équipes équilibrées. Aucun match nul.
+              </p>
+            </div>
+          )}
           <div className="grid gap-2">
             <Label htmlFor="nbTerrains">Nombre de terrains</Label>
             <Input

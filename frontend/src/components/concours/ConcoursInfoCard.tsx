@@ -46,6 +46,14 @@ function formatDates(debut: string, fin: string) {
 // ─── Règles par format ────────────────────────────────────────────────────────
 
 function FormatRulesContent({ typePhase }: { typePhase?: TypePhase }) {
+  if (typePhase === 'MELEE' || typePhase === 'MELEE_TOURNANTE') {
+    return (
+      <div className="space-y-4 text-sm">
+        <section><h3 className="mb-1 font-semibold">Composition</h3><ul className="list-disc space-y-1 pl-4 text-muted-foreground"><li>Inscriptions individuelles avec poste préférentiel</li><li>{typePhase === 'MELEE' ? 'Équipes conservées pendant tout le concours' : 'Équipes recomposées à chaque partie'}</li><li>Les répétitions de partenaires puis d’adversaires sont limitées au mieux</li><li>Aucun match nul</li></ul></section>
+        <section><h3 className="mb-1 font-semibold">Classement</h3><ol className="list-decimal space-y-1 pl-4 text-muted-foreground"><li>Nombre de victoires</li><li>Différence de score</li><li>Total des points marqués</li></ol></section>
+      </div>
+    );
+  }
   if (typePhase === 'POULES') {
     return (
       <div className="space-y-4 text-sm">
@@ -172,6 +180,8 @@ const FORMAT_TITLES: Partial<Record<TypePhase, string>> = {
   CHAMPIONNAT: 'Format Championnat (Round Robin + KO)',
   ELIMINATION_SIMPLE: 'Élimination directe',
   SYSTEME_SUISSE: 'Système Suisse (Aurard)',
+  MELEE: 'À la mêlée',
+  MELEE_TOURNANTE: 'À la mêlée tournante',
 };
 
 const FORMAT_SHORT: Partial<Record<TypePhase, string>> = {
@@ -179,6 +189,8 @@ const FORMAT_SHORT: Partial<Record<TypePhase, string>> = {
   CHAMPIONNAT: 'Round Robin',
   ELIMINATION_SIMPLE: 'Élim. directe + complémentaire',
   SYSTEME_SUISSE: 'Système Suisse (Aurard)',
+  MELEE: 'À la mêlée',
+  MELEE_TOURNANTE: 'À la mêlée tournante',
 };
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -303,9 +315,9 @@ export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCard
             </div>
           )}
           <div>
-            <p className="text-muted-foreground">Équipes / Terrains</p>
+            <p className="text-muted-foreground">{typePhase === 'MELEE' || typePhase === 'MELEE_TOURNANTE' ? 'Joueurs / Terrains' : 'Équipes / Terrains'}</p>
             <p className="font-medium">
-              {concours.nbEquipesInscrites} équipes · {concours.nbTerrains} terrains
+              {typePhase === 'MELEE' || typePhase === 'MELEE_TOURNANTE' ? `${concours.nbParticipants} joueurs` : `${concours.nbEquipesInscrites} équipes`} · {concours.nbTerrains} terrains
             </p>
           </div>
         </div>

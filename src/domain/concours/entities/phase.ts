@@ -1,4 +1,4 @@
-import { Entity, EntityId, InvalidStateTransitionError } from '../../../shared/types.js';
+import { Entity, EntityId, InvalidStateTransitionError, InvariantViolationError } from '../../../shared/types.js';
 import { StatutPhase, TypePhase } from '../../shared/enums.js';
 import { PhaseDefinition } from '../../shared/value-objects.js';
 import { Tour } from './tour.js';
@@ -46,6 +46,14 @@ export class Phase extends Entity {
 
   ajouterTour(tour: Tour): void {
     this._tours.push(tour);
+  }
+
+  remplacerDernierTour(tour: Tour): void {
+    const courant = this.dernierTour;
+    if (!courant || courant.matchs.some((match) => match.statut !== 'PROGRAMME')) {
+      throw new InvariantViolationError("Le tirage ne peut être refait qu'avant le démarrage des matchs");
+    }
+    this._tours[this._tours.length - 1] = tour;
   }
 
   demarrer(): void {

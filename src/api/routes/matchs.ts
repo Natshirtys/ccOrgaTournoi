@@ -5,7 +5,7 @@ import { validateBody } from '../middleware/validation.js';
 import { ApiError } from '../middleware/error-handler.js';
 import { createRequireAdmin } from '../auth/auth-middleware.js';
 import { Score, ResultatMatch, GoalAverage, PhaseDefinition } from '../../domain/shared/value-objects.js';
-import { TypeResultat, CritereClassement, TypePhase, StatutPhase } from '../../domain/shared/enums.js';
+import { TypeResultat, CritereClassement, TypePhase, StatutPhase, MethodeAppariement } from '../../domain/shared/enums.js';
 import { Match } from '../../domain/concours/entities/match.js';
 import { Tour } from '../../domain/concours/entities/tour.js';
 import { Phase } from '../../domain/concours/entities/phase.js';
@@ -18,6 +18,7 @@ import { SingleEliminationStrategy } from '../../engine/strategies/phase/single-
 import { ComplementaireStrategy } from '../../engine/strategies/phase/complementaire-strategy.js';
 import { SwissSystemStrategy } from '../../engine/strategies/phase/swiss-system-strategy.js';
 import { assignerTerrainsAuTour, assignerTerrainsToursNonAssignes } from '../helpers/terrain-assignment.js';
+import { generateFixedMeleeTeams, generateRotatingMeleeRound, pairFixedMeleeTeams, validateMeleePlayerCount, type MeleeMatchHistory } from '../../engine/strategies/melee/melee-scheduler.js';
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,8 @@ export function createMatchsRouter(ctx: AppContext): Router {
               ? concours.terrains.find((t) => t.id === match.terrainId)?.nom ?? null
               : null,
             canEditScore: match.statut === 'TERMINE' && tour.statut !== 'TERMINE',
+            participantIdsEquipeA: match.participantIdsEquipeA,
+            participantIdsEquipeB: match.participantIdsEquipeB,
           });
         }
       }
@@ -181,6 +184,9 @@ export function createMatchsRouter(ctx: AppContext): Router {
   router.post('/:id/matchs/:matchId/score', protect, validateBody(saisirScoreSchema), asyncHandler(async (req, res) => {
     const { concours, phase, tour, match } = await findMatchWithContext(ctx, param(req.params.id), param(req.params.matchId));
     const { scoreEquipeA, scoreEquipeB } = req.body;
+    if (scoreEquipeA === scoreEquipeB && !concours.reglement.nulAutorise) {
+      throw ApiError.badRequest('Le match nul n’est pas autorisé');
+    }
     const action = concours.capturerActionAnnulable(
       'SCORE',
       `Saisie du score ${scoreEquipeA}–${scoreEquipeB}`,
@@ -325,6 +331,9 @@ export function createMatchsRouter(ctx: AppContext): Router {
   router.post('/:id/matchs/:matchId/corriger-score', protect, validateBody(saisirScoreSchema), asyncHandler(async (req, res) => {
     const { concours, tour, match } = await findMatchWithContext(ctx, param(req.params.id), param(req.params.matchId));
     const { scoreEquipeA, scoreEquipeB } = req.body;
+    if (scoreEquipeA === scoreEquipeB && !concours.reglement.nulAutorise) {
+      throw ApiError.badRequest('Le match nul n’est pas autorisé');
+    }
 
     if (match.statut !== 'TERMINE') {
       throw ApiError.badRequest('Seul un match terminé peut être corrigé');
@@ -366,6 +375,53 @@ export function createMatchsRouter(ctx: AppContext): Router {
     res.json({ matchId: match.id, statut: match.statut, score: { pointsA: scoreEquipeA, pointsB: scoreEquipeB } });
   }));
 
+  router.post('/:id/melee/refaire-tirage', protect, asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+    const phase = concours.phases.find((item) => item.statut === StatutPhase.EN_COURS);
+    if (!phase || ![TypePhase.MELEE, TypePhase.MELEE_TOURNANTE].includes(phase.type)) {
+      throw ApiError.badRequest('Aucune mêlée en cours');
+    }
+    const courant = phase.dernierTour;
+    if (!courant || courant.matchs.some((match) => match.statut !== 'PROGRAMME')) {
+      throw ApiError.badRequest("Le tirage ne peut être refait qu'avant le démarrage des matchs");
+    }
+    const toursPrecedents = phase.tours.slice(0, -1);
+    const history: MeleeMatchHistory[] = toursPrecedents.flatMap((tour) => tour.matchs.map((match) => ({
+      equipeA: match.participantIdsEquipeA,
+      equipeB: match.participantIdsEquipeB,
+      vainqueurIds: match.resultat?.vainqueur === match.equipeAId ? match.participantIdsEquipeA : match.participantIdsEquipeB,
+    })));
+    const joueursParEquipe = concours.formule.joueurParEquipe;
+    let compositions;
+    if (phase.type === TypePhase.MELEE_TOURNANTE) {
+      const joueurs = concours.participantsMeleeActifs.map((participant) => ({ id: participant.id, poste: participant.poste }));
+      try { validateMeleePlayerCount(joueurs.length, joueursParEquipe); }
+      catch (error) { throw ApiError.badRequest((error as Error).message); }
+      compositions = generateRotatingMeleeRound(joueurs, joueursParEquipe, history);
+    } else if (courant.numero === 1) {
+      const joueurs = concours.participantsMeleeActifs.map((participant) => ({ id: participant.id, poste: participant.poste }));
+      const equipes = generateFixedMeleeTeams(joueurs, joueursParEquipe);
+      compositions = pairFixedMeleeTeams(equipes, [], concours.reglement.methodeAppariement === MethodeAppariement.SUISSE_STANDARD);
+    } else {
+      const equipes = phase.tours[0].matchs.flatMap((match) => [[...match.participantIdsEquipeA], [...match.participantIdsEquipeB]]);
+      compositions = pairFixedMeleeTeams(equipes, history, concours.reglement.methodeAppariement === MethodeAppariement.SUISSE_STANDARD);
+    }
+    const nouveauTour = new Tour(courant.id, phase.id, courant.numero, undefined, [], courant.nom);
+    compositions.forEach((composition, index) => nouveauTour.ajouterMatch(new Match(
+      `${courant.id}-match-${index + 1}`,
+      courant.id,
+      meleeTeamId(composition.equipeA),
+      meleeTeamId(composition.equipeB),
+      null, null, undefined, null, null,
+      composition.equipeA, composition.equipeB,
+    )));
+    phase.remplacerDernierTour(nouveauTour);
+    assignerTerrainsAuTour(concours, nouveauTour);
+    await ctx.concoursRepository.save(concours);
+    res.json({ tourNumero: nouveauTour.numero, nbMatchs: nouveauTour.matchs.length });
+  }));
+
   // POST /:id/generer-tour-suivant — Générer le tour / phase suivant(e)
   router.post('/:id/generer-tour-suivant', protect, asyncHandler(async (req, res) => {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));
@@ -404,6 +460,70 @@ export function createMatchsRouter(ctx: AppContext): Router {
 
     const phaseType = phase.type;
     let newTourGen: { numero: number; matchups: { equipeAId: string; equipeBId: string | null }[]; nom?: string } | null;
+
+    if (phaseType === TypePhase.MELEE || phaseType === TypePhase.MELEE_TOURNANTE) {
+      const nbParties = phase.config.constraints.nbParties ?? 4;
+      if (dernierTour.numero >= nbParties) {
+        phase.terminer();
+        await ctx.concoursRepository.save(concours);
+        res.json({ message: `Les ${nbParties} parties sont terminées` });
+        return;
+      }
+      const history: MeleeMatchHistory[] = phase.tours.flatMap((tour) => tour.matchs.map((match) => ({
+        equipeA: match.participantIdsEquipeA,
+        equipeB: match.participantIdsEquipeB,
+        vainqueurIds: match.resultat?.vainqueur === match.equipeAId
+          ? match.participantIdsEquipeA
+          : match.resultat?.vainqueur === match.equipeBId
+            ? match.participantIdsEquipeB
+            : undefined,
+      })));
+      const joueursParEquipe = concours.formule.joueurParEquipe;
+      let compositions;
+      if (phaseType === TypePhase.MELEE_TOURNANTE) {
+        const participants = concours.participantsMeleeActifs.map((participant) => ({ id: participant.id, poste: participant.poste }));
+        try { validateMeleePlayerCount(participants.length, joueursParEquipe); }
+        catch (error) { throw ApiError.badRequest((error as Error).message); }
+        compositions = generateRotatingMeleeRound(participants, joueursParEquipe, history);
+      } else {
+        const equipesFixes = phase.tours[0].matchs.flatMap((match) => [
+          [...match.participantIdsEquipeA],
+          [...match.participantIdsEquipeB],
+        ]);
+        compositions = pairFixedMeleeTeams(
+          equipesFixes,
+          history,
+          concours.reglement.methodeAppariement === MethodeAppariement.SUISSE_STANDARD,
+        );
+      }
+      const numero = dernierTour.numero + 1;
+      const tourId = `${phase.id}-tour-${numero}`;
+      const newTour = new Tour(tourId, phase.id, numero, undefined, [], `Partie ${numero}`);
+      compositions.forEach((composition, index) => {
+        newTour.ajouterMatch(new Match(
+          `${tourId}-match-${index + 1}`,
+          tourId,
+          meleeTeamId(composition.equipeA),
+          meleeTeamId(composition.equipeB),
+          null,
+          null,
+          undefined,
+          null,
+          null,
+          composition.equipeA,
+          composition.equipeB,
+        ));
+      });
+      phase.ajouterTour(newTour);
+      assignerTerrainsAuTour(concours, newTour);
+      await ctx.concoursRepository.save(concours);
+      res.status(201).json({
+        phaseId: phase.id,
+        phaseType,
+        tour: { numero, nom: `Partie ${numero}`, nbMatchs: compositions.length },
+      });
+      return;
+    }
 
     if (phaseType === TypePhase.POULES) {
       const nbPoules = phase.config.constraints?.nbPoules ?? Math.floor(phaseEquipeIds.length / 4);
@@ -742,6 +862,48 @@ export function createMatchsRouter(ctx: AppContext): Router {
     const phase = concours.phases[concours.phases.length - 1];
     const reglement = concours.reglement;
 
+    if (phase.type === TypePhase.MELEE_TOURNANTE) {
+      const stats = new Map(concours.participantsMelee.map((participant) => [participant.id, {
+        id: participant.id, nom: participant.nom, matchsJoues: 0, victoires: 0, defaites: 0,
+        pointsMarques: 0, pointsEncaisses: 0,
+      }]));
+      for (const tour of phase.tours) for (const match of tour.matchs) {
+        if (!match.resultat || !match.score) continue;
+        for (const participantId of match.participantIdsEquipeA) {
+          const ligne = stats.get(participantId); if (!ligne) continue;
+          ligne.matchsJoues++; ligne.pointsMarques += match.score.pointsA; ligne.pointsEncaisses += match.score.pointsB;
+          if (match.resultat.vainqueur === match.equipeAId) ligne.victoires++; else ligne.defaites++;
+        }
+        for (const participantId of match.participantIdsEquipeB) {
+          const ligne = stats.get(participantId); if (!ligne) continue;
+          ligne.matchsJoues++; ligne.pointsMarques += match.score.pointsB; ligne.pointsEncaisses += match.score.pointsA;
+          if (match.resultat.vainqueur === match.equipeBId) ligne.victoires++; else ligne.defaites++;
+        }
+      }
+      const lignes = [...stats.values()]
+        .filter((ligne) => ligne.matchsJoues > 0)
+        .sort((a, b) => b.victoires - a.victoires
+          || (b.pointsMarques - b.pointsEncaisses) - (a.pointsMarques - a.pointsEncaisses)
+          || b.pointsMarques - a.pointsMarques
+          || a.nom.localeCompare(b.nom, 'fr'))
+        .map((ligne, index) => ({
+          rang: index + 1,
+          equipeId: ligne.id,
+          nom: ligne.nom,
+          points: ligne.victoires,
+          matchsJoues: ligne.matchsJoues,
+          victoires: ligne.victoires,
+          defaites: ligne.defaites,
+          nuls: 0,
+          pointsMarques: ligne.pointsMarques,
+          pointsEncaisses: ligne.pointsEncaisses,
+          goalAverage: ligne.pointsMarques - ligne.pointsEncaisses,
+          qualifiee: false,
+        }));
+      res.json({ phaseId: phase.id, classement: lignes, classementIndividuel: true });
+      return;
+    }
+
     // Collecter tous les résultats de matchs
     const allResults: MatchResultEntry[] = [];
     const equipeIds = new Set<string>();
@@ -805,7 +967,13 @@ export function createMatchsRouter(ctx: AppContext): Router {
     // Calculer le classement
     const qualifiesCount = phase.config.qualificationRule?.nombre ?? 0;
     const rankingStrategy = new PointsRankingStrategy(qualifiesCount);
-    const ranked = rankingStrategy.calculate(entries);
+    const ranked = phase.type === TypePhase.MELEE
+      ? [...entries]
+          .sort((a, b) => b.victoires - a.victoires
+            || (b.pointsMarques - b.pointsEncaisses) - (a.pointsMarques - a.pointsEncaisses)
+            || b.pointsMarques - a.pointsMarques)
+          .map((entry, index) => ({ ...entry, rang: index + 1, qualifiee: false }))
+      : rankingStrategy.calculate(entries);
 
     // Sauvegarder le classement dans la phase
     const lignes: LigneClassement[] = ranked.map((r) => ({
@@ -823,8 +991,9 @@ export function createMatchsRouter(ctx: AppContext): Router {
     }));
 
     const classement = new Classement(phase.id, lignes, [
-      CritereClassement.POINTS,
+      phase.type === TypePhase.MELEE ? CritereClassement.NOMBRE_VICTOIRES : CritereClassement.POINTS,
       CritereClassement.GOAL_AVERAGE_GENERAL,
+      CritereClassement.POINTS_MARQUES,
     ]);
     phase.mettreAJourClassement(classement);
     await ctx.concoursRepository.save(concours);
@@ -834,6 +1003,7 @@ export function createMatchsRouter(ctx: AppContext): Router {
       classement: lignes.map((l) => ({
         rang: l.rang,
         equipeId: l.equipeId,
+        nom: phase.type === TypePhase.MELEE ? meleeTeamName(concours, phase, l.equipeId) : undefined,
         points: l.points,
         matchsJoues: l.matchsJoues,
         victoires: l.matchsGagnes,
@@ -848,6 +1018,18 @@ export function createMatchsRouter(ctx: AppContext): Router {
   }));
 
   return router;
+}
+
+function meleeTeamId(participantIds: readonly string[]): string {
+  return `melee-${[...participantIds].sort().join('-')}`;
+}
+
+function meleeTeamName(concours: import('../../domain/concours/entities/concours.js').Concours, phase: Phase, equipeId: string): string {
+  const match = phase.tours.flatMap((tour) => tour.matchs).find((item) => item.equipeAId === equipeId || item.equipeBId === equipeId);
+  if (!match) return equipeId;
+  const ids = match.equipeAId === equipeId ? match.participantIdsEquipeA : match.participantIdsEquipeB;
+  const noms = new Map(concours.participantsMelee.map((participant) => [participant.id, participant.nom]));
+  return ids.map((id) => noms.get(id) ?? id).join(' / ');
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

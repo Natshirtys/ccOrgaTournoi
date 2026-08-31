@@ -149,6 +149,7 @@ export interface PhaseConstraints {
   nulAutorise?: boolean;
   nbPoules?: number;
   taillePoule?: number;
+  nbParties?: number;
 }
 
 // --- FormuleConcours ---

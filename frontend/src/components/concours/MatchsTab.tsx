@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Play } from 'lucide-react';
+import { FileText, Play, Shuffle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/ui/action-error';
@@ -25,7 +25,7 @@ import {
 import { MatchRow } from './MatchRow';
 import { PoolGroupCard } from './PoolGroupCard';
 import { KnockoutBracket } from './KnockoutBracket';
-import { demarrerTousLesMatchs, fetchMatchs } from '@/api/matchs';
+import { demarrerTousLesMatchs, fetchMatchs, refaireTirageMelee } from '@/api/matchs';
 import type { ConcoursDetail, MatchDto, TerrainDto } from '@/types/concours';
 
 const PHASE_LABELS: Record<string, string> = {
@@ -34,6 +34,8 @@ const PHASE_LABELS: Record<string, string> = {
   CONSOLANTE: 'Tableau Complémentaire',
   CHAMPIONNAT: 'Phase de poules',
   SYSTEME_SUISSE: 'Système Suisse',
+  MELEE: 'Mêlée — équipes fixes',
+  MELEE_TOURNANTE: 'Mêlée tournante',
 };
 
 // Un fin accent conserve l'identité A/B/C sans transformer le titre en bandeau massif.
@@ -112,14 +114,31 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
     mutationFn: () => demarrerTousLesMatchs(concours.id, matchsPrets.map((match) => match.id)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['concours', concours.id] }),
   });
+  const isMelee = concours.formule.typePhase === 'MELEE' || concours.formule.typePhase === 'MELEE_TOURNANTE';
+  const canRedraw = !readOnly && isMelee && allMatchs.length > 0 && allMatchs
+    .filter((match) => match.tourNumero === Math.max(...allMatchs.map((item) => item.tourNumero)))
+    .every((match) => match.statut === 'PROGRAMME');
+  const redrawMutation = useMutation({
+    mutationFn: () => refaireTirageMelee(concours.id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['concours', concours.id, 'matchs'] }),
+  });
 
   const equipeLookup = useMemo(() => {
     const map = new Map<string, string>();
     for (const insc of concours.inscriptions) {
       map.set(insc.equipeId, insc.nomEquipe);
     }
+    const participantNames = new Map(concours.participantsMelee.map((participant) => [participant.id, participant.nom]));
+    for (const match of data?.data ?? []) {
+      if (match.participantIdsEquipeA.length > 0) {
+        map.set(match.equipeAId, match.participantIdsEquipeA.map((id) => participantNames.get(id) ?? id).join(' / '));
+      }
+      if (match.equipeBId && match.participantIdsEquipeB.length > 0) {
+        map.set(match.equipeBId, match.participantIdsEquipeB.map((id) => participantNames.get(id) ?? id).join(' / '));
+      }
+    }
     return map;
-  }, [concours.inscriptions]);
+  }, [concours.inscriptions, concours.participantsMelee, data]);
 
   // Map phaseId → nom depuis concours.phases
   const phaseNomLookup = useMemo(() => {
@@ -207,6 +226,11 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        {canRedraw && (
+          <Button variant="outline" className="h-10 w-full gap-2 sm:w-auto" onClick={() => redrawMutation.mutate()} disabled={redrawMutation.isPending}>
+            <Shuffle className="h-4 w-4" />Refaire le tirage
+          </Button>
+        )}
         {!readOnly && matchsPrets.length > 0 && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -249,7 +273,7 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
           {isExporting ? 'Génération…' : 'Exporter feuilles de match'}
         </Button>
       </div>
-      <ActionError error={demarrerTousMutation.error ?? exportError} />
+      <ActionError error={demarrerTousMutation.error ?? redrawMutation.error ?? exportError} />
       {matchsByPhaseAndTour.map(({ phaseId, phaseType, phaseNom, tours }) => {
         if (isRoundRobin && phaseType === 'CONSOLANTE') return null;
         const phaseData = matchsByPhase.get(phaseId);

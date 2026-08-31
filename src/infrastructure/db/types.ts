@@ -33,6 +33,8 @@ export interface MatchData {
   statut: string;
   score: ScoreData | null;
   resultat: ResultatMatchData | null;
+  participantIdsEquipeA?: string[];
+  participantIdsEquipeB?: string[];
 }
 
 export interface TourData {
@@ -76,6 +78,15 @@ export interface PhaseConstraintsData {
   nulAutorise?: boolean;
   nbPoules?: number;
   taillePoule?: number;
+  nbParties?: number;
+}
+
+export interface ParticipantMeleeData {
+  id: string;
+  concoursId: string;
+  nom: string;
+  poste: string;
+  actif: boolean;
 }
 
 export interface PhaseDefinitionData {
@@ -190,4 +201,5 @@ export interface ConcoursData {
   terrains: TerrainData[];
   phases: PhaseData[];
   inscriptions: InscriptionData[];
+  participantsMelee?: ParticipantMeleeData[];
 }

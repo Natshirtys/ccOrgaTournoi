@@ -7,6 +7,7 @@ import type {
   LancerTiragePayload,
   ImportConcoursResult,
   SauvegardeConcours,
+  ParticipantMeleePayload,
 } from '../types/concours';
 
 export function fetchConcours(): Promise<{ data: ConcoursSummary[] }> {
@@ -54,6 +55,28 @@ export function annulerInscription(concoursId: string, inscriptionId: string): P
   return apiFetch(`/concours/${concoursId}/inscriptions/${inscriptionId}`, {
     method: 'DELETE',
   });
+}
+
+export function inscrireParticipantMelee(concoursId: string, payload: ParticipantMeleePayload): Promise<void> {
+  return apiFetch(`/concours/${concoursId}/participants-melee`, {
+    method: 'POST', body: JSON.stringify(payload),
+  });
+}
+
+export function modifierParticipantMelee(concoursId: string, participantId: string, payload: ParticipantMeleePayload): Promise<void> {
+  return apiFetch(`/concours/${concoursId}/participants-melee/${participantId}`, {
+    method: 'PATCH', body: JSON.stringify(payload),
+  });
+}
+
+export function definirParticipantMeleeActif(concoursId: string, participantId: string, actif: boolean): Promise<void> {
+  return apiFetch(`/concours/${concoursId}/participants-melee/${participantId}/actif`, {
+    method: 'PATCH', body: JSON.stringify({ actif }),
+  });
+}
+
+export function supprimerParticipantMelee(concoursId: string, participantId: string): Promise<void> {
+  return apiFetch(`/concours/${concoursId}/participants-melee/${participantId}`, { method: 'DELETE' });
 }
 
 export function lancerTirage(id: string, payload: LancerTiragePayload): Promise<void> {

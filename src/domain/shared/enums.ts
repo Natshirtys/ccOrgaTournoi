@@ -21,6 +21,14 @@ export enum TypePhase {
   CONSOLANTE = 'CONSOLANTE',
   BARRAGE = 'BARRAGE',
   REPECHAGE = 'REPECHAGE',
+  MELEE = 'MELEE',
+  MELEE_TOURNANTE = 'MELEE_TOURNANTE',
+}
+
+export enum PosteMelee {
+  POINTEUR = 'POINTEUR',
+  TIREUR = 'TIREUR',
+  POLYVALENT = 'POLYVALENT',
 }
 
 export enum StatutConcours {

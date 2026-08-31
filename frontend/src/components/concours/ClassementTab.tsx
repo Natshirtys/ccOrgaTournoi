@@ -38,11 +38,13 @@ function ClassementRow({
   nom,
   idx,
   total,
+  melee,
 }: {
   ligne: LigneClassementDto;
   nom: string;
   idx: number;
   total: number;
+  melee: boolean;
 }) {
   const isPodium = ligne.rang <= 3;
   const isAfterPodium = ligne.rang === 3 && total > 3;
@@ -112,7 +114,7 @@ function ClassementRow({
 
       {/* Pts */}
       <span className="text-center text-lg font-black tabular-nums text-foreground">
-        {ligne.points}
+        {melee ? ligne.pointsMarques : ligne.points}
       </span>
     </div>
   );
@@ -121,6 +123,7 @@ function ClassementRow({
 // ─── Composant principal ─────────────────────────────────────────────────────
 
 export function ClassementTab({ concours }: ClassementTabProps) {
+  const isMelee = concours.formule.typePhase === 'MELEE' || concours.formule.typePhase === 'MELEE_TOURNANTE';
   const hasPhases = concours.phases.length > 0;
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<unknown>(null);
@@ -136,8 +139,10 @@ export function ClassementTab({ concours }: ClassementTabProps) {
     for (const insc of concours.inscriptions) {
       map.set(insc.equipeId, insc.nomEquipe);
     }
+    for (const participant of concours.participantsMelee) map.set(participant.id, participant.nom);
+    for (const ligne of data?.classement ?? []) if (ligne.nom) map.set(ligne.equipeId, ligne.nom);
     return map;
-  }, [concours.inscriptions]);
+  }, [concours.inscriptions, concours.participantsMelee, data]);
 
   if (!hasPhases) {
     return <p className="py-8 text-center text-muted-foreground">Pas de phase en cours.</p>;
@@ -197,13 +202,13 @@ export function ClassementTab({ concours }: ClassementTabProps) {
           <span className="pr-1 text-right text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
             #
           </span>
-          <HeaderCell first>Équipe</HeaderCell>
+          <HeaderCell first>{concours.formule.typePhase === 'MELEE_TOURNANTE' ? 'Joueur' : 'Équipe'}</HeaderCell>
           <HeaderCell>V</HeaderCell>
           <HeaderCell>D</HeaderCell>
           <HeaderCell className="hidden sm:inline">Pm</HeaderCell>
           <HeaderCell className="hidden sm:inline">Pe</HeaderCell>
           <HeaderCell className="hidden sm:inline">Diff</HeaderCell>
-          <HeaderCell>Pts</HeaderCell>
+          <HeaderCell>{isMelee ? 'Pm' : 'Pts'}</HeaderCell>
         </div>
 
         {/* Séparateur sous les headers */}
@@ -217,6 +222,7 @@ export function ClassementTab({ concours }: ClassementTabProps) {
             nom={equipeLookup.get(ligne.equipeId) ?? ligne.equipeId}
             idx={idx}
             total={classement.length}
+            melee={isMelee}
           />
         ))}
 

@@ -755,4 +755,58 @@ describe('API Concours', () => {
     expect(staleUndoRes.status).toBe(400);
     expect(staleUndoRes.body.error).toMatch(/Aucune action récente/);
   });
+
+  it('gère une mêlée tournante complète avec classement individuel', async () => {
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'Mêlée tournante',
+      dateDebut: '2026-08-30',
+      typeEquipe: 'DOUBLETTE',
+      typePhase: 'MELEE_TOURNANTE',
+      nbParties: 2,
+      nbTerrains: 2,
+    });
+    expect(createRes.status).toBe(201);
+    const id = createRes.body.id as string;
+    await request(app, 'POST', `/api/v1/concours/${id}/ouvrir-inscriptions`);
+    for (let index = 1; index <= 8; index++) {
+      const participantRes = await request(app, 'POST', `/api/v1/concours/${id}/participants-melee`, {
+        nom: `Joueur ${index}`,
+        poste: index % 2 === 0 ? 'TIREUR' : 'POINTEUR',
+      });
+      expect(participantRes.status).toBe(201);
+    }
+    await request(app, 'POST', `/api/v1/concours/${id}/cloturer-inscriptions`);
+    const drawRes = await request(app, 'POST', `/api/v1/concours/${id}/tirage`, {});
+    expect(drawRes.status).toBe(201);
+
+    const firstRes = await request(app, 'GET', `/api/v1/concours/${id}/matchs`);
+    const first = firstRes.body.data as Array<{ id: string; participantIdsEquipeA: string[]; participantIdsEquipeB: string[] }>;
+    expect(first).toHaveLength(2);
+    expect(first[0].participantIdsEquipeA).toHaveLength(2);
+    const firstPartners = new Set(first.flatMap((match) => [match.participantIdsEquipeA, match.participantIdsEquipeB]).map((team) => [...team].sort().join('|')));
+
+    for (const match of first) {
+      await request(app, 'POST', `/api/v1/concours/${id}/matchs/${match.id}/demarrer`);
+      const scoreRes = await request(app, 'POST', `/api/v1/concours/${id}/matchs/${match.id}/score`, { scoreEquipeA: 13, scoreEquipeB: 7 });
+      expect(scoreRes.status).toBe(200);
+    }
+    const nextRes = await request(app, 'POST', `/api/v1/concours/${id}/generer-tour-suivant`, {});
+    expect(nextRes.status).toBe(201);
+    const secondRes = await request(app, 'GET', `/api/v1/concours/${id}/matchs`);
+    const all = secondRes.body.data as Array<{ id: string; tourNumero: number; participantIdsEquipeA: string[]; participantIdsEquipeB: string[] }>;
+    const second = all.filter((match) => match.tourNumero === 2);
+    const secondPartners = second.flatMap((match) => [match.participantIdsEquipeA, match.participantIdsEquipeB]).map((team) => [...team].sort().join('|'));
+    expect(secondPartners.every((team) => !firstPartners.has(team))).toBe(true);
+
+    for (const match of second) {
+      await request(app, 'POST', `/api/v1/concours/${id}/matchs/${match.id}/demarrer`);
+      await request(app, 'POST', `/api/v1/concours/${id}/matchs/${match.id}/score`, { scoreEquipeA: 13, scoreEquipeB: 9 });
+    }
+    const finishPhase = await request(app, 'POST', `/api/v1/concours/${id}/generer-tour-suivant`, {});
+    expect(finishPhase.status).toBe(200);
+    const classementRes = await request(app, 'GET', `/api/v1/concours/${id}/classement`);
+    expect(classementRes.status).toBe(200);
+    expect(classementRes.body.classementIndividuel).toBe(true);
+    expect(classementRes.body.classement).toHaveLength(8);
+  });
 });

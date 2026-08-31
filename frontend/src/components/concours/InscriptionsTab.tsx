@@ -18,6 +18,7 @@ import {
 import { annulerInscription } from '@/api/concours';
 import { cn } from '@/lib/utils';
 import type { ConcoursDetail } from '@/types/concours';
+import { MeleeParticipantsTab } from './MeleeParticipantsTab';
 
 interface InscriptionsTabProps {
   concours: ConcoursDetail;
@@ -44,6 +45,10 @@ export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabP
       queryClient.invalidateQueries({ queryKey: ['concours'] });
     },
   });
+
+  if (concours.formule.typePhase === 'MELEE' || concours.formule.typePhase === 'MELEE_TOURNANTE') {
+    return <MeleeParticipantsTab concours={concours} readOnly={readOnly} />;
+  }
 
   return (
     <div className="space-y-4">

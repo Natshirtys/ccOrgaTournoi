@@ -39,6 +39,25 @@ export function obtenirProchaineAction(concours: Concours): ProchaineAction {
       };
 
     case StatutConcours.INSCRIPTIONS_OUVERTES: {
+      if (concours.estMelee) {
+        const inscrits = concours.participantsMeleeActifs.length;
+        const requisParMatch = concours.formule.joueurParEquipe * 2;
+        const compatible = inscrits >= requisParMatch && inscrits % requisParMatch === 0;
+        if (!compatible) {
+          const prochainTotal = Math.max(requisParMatch, Math.ceil((inscrits + 1) / requisParMatch) * requisParMatch);
+          return {
+            code: 'COMPLETER_INSCRIPTIONS',
+            titre: `Inscrire encore ${prochainTotal - inscrits} joueur${prochainTotal - inscrits > 1 ? 's' : ''}`,
+            description: `Les matchs complets nécessitent un nombre de joueurs multiple de ${requisParMatch}.`,
+            progression: { valeur: inscrits, total: prochainTotal, libelle: `${inscrits} sur ${prochainTotal} joueurs` },
+          };
+        }
+        return {
+          code: 'CLOTURER_INSCRIPTIONS',
+          titre: 'Clôturer les inscriptions',
+          description: `${inscrits} joueurs sont disponibles. Vous pouvez maintenant préparer le tirage.`,
+        };
+      }
       const inscrites = concours.inscriptionsActives.length;
       const minimum = concours.formule.nbEquipesMin;
       const manquantes = Math.max(0, minimum - inscrites);
@@ -67,7 +86,9 @@ export function obtenirProchaineAction(concours: Concours): ProchaineAction {
       return {
         code: 'LANCER_TIRAGE',
         titre: 'Lancer le tirage',
-        description: `${concours.inscriptionsActives.length} équipes seront réparties selon le format du concours.`,
+        description: concours.estMelee
+          ? `${concours.participantsMeleeActifs.length} joueurs seront répartis en équipes équilibrées.`
+          : `${concours.inscriptionsActives.length} équipes seront réparties selon le format du concours.`,
       };
 
     case StatutConcours.TIRAGE_EN_COURS:

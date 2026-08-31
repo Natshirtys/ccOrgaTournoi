@@ -5,6 +5,7 @@ import { Terrain } from './terrain.js';
 import { Phase } from './phase.js';
 import { Inscription } from './inscription.js';
 import { Equipe } from './equipe.js';
+import { ParticipantMelee } from './participant-melee.js';
 
 export type TypeActionAnnulable =
   | 'DEMARRAGE_MATCH'
@@ -54,6 +55,7 @@ export class Concours extends AggregateRoot {
   private _inscriptions: Inscription[];
   private _estPublic: boolean;
   private _derniereActionAnnulable: ActionAnnulable | null;
+  private _participantsMelee: ParticipantMelee[];
 
   constructor(
     id: EntityId,
@@ -69,6 +71,7 @@ export class Concours extends AggregateRoot {
     inscriptions: Inscription[] = [],
     estPublic?: boolean,
     derniereActionAnnulable: ActionAnnulable | null = null,
+    participantsMelee: ParticipantMelee[] = [],
   ) {
     super(id);
     this._statut = statut;
@@ -78,6 +81,7 @@ export class Concours extends AggregateRoot {
     // Rétrocompatibilité : les concours existants restent visibles, sauf les archives.
     this._estPublic = estPublic ?? statut !== StatutConcours.ARCHIVE;
     this._derniereActionAnnulable = derniereActionAnnulable;
+    this._participantsMelee = participantsMelee;
   }
 
   // --- Getters ---
@@ -100,6 +104,13 @@ export class Concours extends AggregateRoot {
 
   get inscriptionsActives(): Inscription[] {
     return this._inscriptions.filter(i => i.estActive());
+  }
+
+  get participantsMelee(): readonly ParticipantMelee[] { return this._participantsMelee; }
+  get participantsMeleeActifs(): ParticipantMelee[] { return this._participantsMelee.filter((p) => p.actif); }
+  get estMelee(): boolean {
+    const type = this.formule.phases[0]?.type;
+    return type === TypePhase.MELEE || type === TypePhase.MELEE_TOURNANTE;
   }
 
   get nbEquipesInscrites(): number {
@@ -228,10 +239,13 @@ export class Concours extends AggregateRoot {
   }
 
   lancerTirage(): void {
-    if (this.nbEquipesInscrites < this.formule.nbEquipesMin) {
+    if (!this.estMelee && this.nbEquipesInscrites < this.formule.nbEquipesMin) {
       throw new InvariantViolationError(
         `Pas assez d'équipes inscrites (${this.nbEquipesInscrites}/${this.formule.nbEquipesMin} minimum)`,
       );
+    }
+    if (this.estMelee && this.participantsMeleeActifs.length < this.formule.joueurParEquipe * 2) {
+      throw new InvariantViolationError('Il faut au moins deux équipes complètes pour lancer la mêlée');
     }
     this.transitionVers(StatutConcours.TIRAGE_EN_COURS);
   }
@@ -281,6 +295,47 @@ export class Concours extends AggregateRoot {
   }
 
   // --- Inscriptions ---
+
+  inscrireParticipantMelee(participant: ParticipantMelee): void {
+    this.verifierInscriptionsOuvertes();
+    if (!this.estMelee) throw new InvariantViolationError("Ce concours n'est pas une mêlée");
+    this.verifierNomParticipant(participant.nom);
+    this._participantsMelee.push(participant);
+  }
+
+  modifierParticipantMelee(id: EntityId, nom: string, poste: import('../../shared/enums.js').PosteMelee): void {
+    this.verifierInscriptionsOuvertes();
+    const participant = this._participantsMelee.find((p) => p.id === id);
+    if (!participant) throw new InvariantViolationError('Participant non trouvé');
+    this.verifierNomParticipant(nom, id);
+    participant.modifier(nom, poste);
+  }
+
+  definirParticipantMeleeActif(id: EntityId, actif: boolean): void {
+    this.verifierNonArchive();
+    if (![StatutConcours.INSCRIPTIONS_OUVERTES, StatutConcours.EN_COURS].includes(this._statut)) {
+      throw new InvariantViolationError("La disponibilité ne peut être modifiée qu'entre deux parties");
+    }
+    if (this._statut === StatutConcours.EN_COURS) {
+      if (this.formule.phases[0]?.type === TypePhase.MELEE) {
+        throw new InvariantViolationError("Les équipes de la mêlée classique restent fixes pendant le concours");
+      }
+      const dernierTour = this._phases.find((p) => p.statut === 'EN_COURS')?.dernierTour;
+      if (dernierTour && !dernierTour.tousMatchsTermines) {
+        throw new InvariantViolationError('Terminez la partie en cours avant de modifier les disponibilités');
+      }
+    }
+    const participant = this._participantsMelee.find((p) => p.id === id);
+    if (!participant) throw new InvariantViolationError('Participant non trouvé');
+    participant.definirActif(actif);
+  }
+
+  supprimerParticipantMelee(id: EntityId): void {
+    this.verifierInscriptionsOuvertes();
+    const index = this._participantsMelee.findIndex((p) => p.id === id);
+    if (index < 0) throw new InvariantViolationError('Participant non trouvé');
+    this._participantsMelee.splice(index, 1);
+  }
 
   inscrireEquipe(inscription: Inscription): void {
     this.verifierInscriptionsOuvertes();
@@ -347,6 +402,13 @@ export class Concours extends AggregateRoot {
     }
   }
 
+  private verifierNomParticipant(nom: string, idIgnore?: EntityId): void {
+    const normalise = nom.trim().toLocaleLowerCase('fr-FR');
+    if (this._participantsMelee.some((p) => p.id !== idIgnore && p.nom.toLocaleLowerCase('fr-FR') === normalise)) {
+      throw new InvariantViolationError(`Le participant « ${nom.trim()} » est déjà inscrit`);
+    }
+  }
+
   private calculerSignatureEtat(): string {
     const etat = JSON.stringify({
       statut: this._statut,
@@ -364,6 +426,9 @@ export class Concours extends AggregateRoot {
         joueurs: inscription.equipe.joueurIds,
         club: inscription.equipe.clubId,
         teteDeSerie: inscription.teteDeSerie,
+      })),
+      participantsMelee: this._participantsMelee.map((participant) => ({
+        id: participant.id, nom: participant.nom, poste: participant.poste, actif: participant.actif,
       })),
       phases: this._phases.map((phase) => ({
         id: phase.id,

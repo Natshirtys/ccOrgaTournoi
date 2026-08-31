@@ -18,6 +18,7 @@ export interface ConcoursSummary {
   statut: StatutConcours;
   estPublic: boolean;
   nbEquipesInscrites: number;
+  nbParticipants: number;
   nbTerrains: number;
   nbPhases: number;
   formule: {
@@ -36,7 +37,19 @@ export type TypePhase =
   | 'CHAMPIONNAT'
   | 'CONSOLANTE'
   | 'BARRAGE'
-  | 'REPECHAGE';
+  | 'REPECHAGE'
+  | 'MELEE'
+  | 'MELEE_TOURNANTE';
+
+export type PosteMelee = 'POINTEUR' | 'TIREUR' | 'POLYVALENT';
+export type MethodeAppariement = 'ALEATOIRE' | 'SUISSE_STANDARD';
+
+export interface ParticipantMeleeDto {
+  id: string;
+  nom: string;
+  poste: PosteMelee;
+  actif: boolean;
+}
 
 export type StatutMatch =
   | 'PROGRAMME'
@@ -84,6 +97,7 @@ export interface ConcoursDetail extends ConcoursSummary {
   derniereActionAnnulable: DerniereActionAnnulableDto | null;
   terrains: TerrainDto[];
   inscriptions: InscriptionDto[];
+  participantsMelee: ParticipantMeleeDto[];
   phases: PhaseDto[];
 }
 
@@ -130,6 +144,8 @@ export interface MatchDto {
   score: { equipeA: number; equipeB: number } | null;
   resultat: TypeResultat | null;
   canEditScore: boolean;
+  participantIdsEquipeA: string[];
+  participantIdsEquipeB: string[];
 }
 
 export interface LigneClassementDto {
@@ -143,6 +159,7 @@ export interface LigneClassementDto {
   pointsEncaisses: number;
   goalAverage: number;
   qualifiee: boolean;
+  nom?: string;
 }
 
 export interface CreateConcoursPayload {
@@ -154,6 +171,13 @@ export interface CreateConcoursPayload {
   typeEquipe: TypeEquipe;
   typePhase?: TypePhase;
   nbTerrains: number;
+  nbParties?: number;
+  methodeAppariement?: MethodeAppariement;
+}
+
+export interface ParticipantMeleePayload {
+  nom: string;
+  poste: PosteMelee;
 }
 
 export interface InscrireEquipePayload {
