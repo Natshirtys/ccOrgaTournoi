@@ -37,6 +37,7 @@ export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabP
   const canInscrire = !readOnly && concours.statut === 'INSCRIPTIONS_OUVERTES';
   const inscriptions = concours.inscriptions;
   const joueursAttendus = JOUEURS_ATTENDUS[concours.formule.typeEquipe] ?? 1;
+  const joueursDejaInscrits = inscriptions.flatMap((inscription) => inscription.joueurs ?? []);
 
   const annulationMutation = useMutation({
     mutationFn: (inscriptionId: string) => annulerInscription(concours.id, inscriptionId),
@@ -68,6 +69,7 @@ export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabP
           <InscrireEquipeDialog
             concoursId={concours.id}
             joueursAttendus={joueursAttendus}
+            excludedPlayerNames={joueursDejaInscrits}
           />
         )}
       </div>
@@ -138,6 +140,9 @@ export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabP
                     concoursId={concours.id}
                     inscription={insc}
                     joueursAttendus={joueursAttendus}
+                    excludedPlayerNames={joueursDejaInscrits.filter(
+                      (nom) => !(insc.joueurs ?? []).includes(nom),
+                    )}
                   />
                   <AlertDialog>
                     <AlertDialogTrigger asChild>

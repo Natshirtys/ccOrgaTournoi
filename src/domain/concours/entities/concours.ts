@@ -258,6 +258,33 @@ export class Concours extends AggregateRoot {
     this.transitionVers(StatutConcours.INSCRIPTIONS_CLOSES);
   }
 
+  revenirAuxInscriptionsAvantDemarrage(): void {
+    this.verifierNonArchive();
+    if (this._statut !== StatutConcours.EN_COURS || this._phases.length === 0) {
+      throw new InvariantViolationError(
+        'Le retour aux inscriptions est possible uniquement après un tirage validé',
+      );
+    }
+
+    const unMatchACommence = this._phases.some((phase) =>
+      phase.tours.some((tour) =>
+        tour.matchs.some((match) =>
+          match.statut !== StatutMatch.PROGRAMME && match.statut !== StatutMatch.BYE,
+        ),
+      ),
+    );
+    if (unMatchACommence) {
+      throw new InvariantViolationError(
+        'Impossible de revenir aux inscriptions : un match a déjà commencé',
+      );
+    }
+
+    this._phases = [];
+    this._terrains.forEach((terrain) => terrain.liberer());
+    this._derniereActionAnnulable = null;
+    this._statut = StatutConcours.INSCRIPTIONS_OUVERTES;
+  }
+
   terminer(): void {
     const estFormuleChampionnat = this.formule.phases[0]?.type === TypePhase.CHAMPIONNAT;
     const phasesPertinentes = estFormuleChampionnat

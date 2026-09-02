@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Trophy } from 'lucide-react';
+import { Trophy, UsersRound } from 'lucide-react';
 import { fetchConcours, createConcours, ouvrirInscriptions, archiverConcours, supprimerConcours, modifierVisibiliteConcours } from '@/api/concours';
 import { ConcoursTable } from '@/components/concours/ConcoursTable';
 import { ArchivesTab } from '@/components/concours/ArchivesTab';
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/auth/AuthContext';
 import type { CreateConcoursPayload } from '@/types/concours';
 import { ActionError } from '@/components/ui/action-error';
+import { ClubPlayersPanel } from '@/components/club/ClubPlayersPanel';
 
 interface ConcoursListPageProps {
   onSelectConcours: (id: string) => void;
@@ -118,6 +119,11 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
               </span>
             )}
           </TabsTrigger>
+          {isAuthenticated && (
+            <TabsTrigger value="joueurs" className="min-h-10 gap-1.5 text-sm sm:min-h-0">
+              <UsersRound className="h-3.5 w-3.5" />Joueurs du club
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="actifs" className="mt-4">
@@ -141,6 +147,12 @@ export function ConcoursListPage({ onSelectConcours }: ConcoursListPageProps) {
             visibilityUpdatingId={visibiliteMutation.isPending ? visibiliteMutation.variables?.id : undefined}
           />
         </TabsContent>
+
+        {isAuthenticated && (
+          <TabsContent value="joueurs" className="mt-4">
+            <ClubPlayersPanel />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

@@ -132,6 +132,51 @@ describe('Machine à états Concours', () => {
     expect(c.statut).toBe(StatutConcours.INSCRIPTIONS_CLOSES);
   });
 
+  it('revient aux inscriptions et supprime un tirage si aucun match n’a commencé', () => {
+    const inscription = creerInscription(
+      'insc1', 'c-retour',
+      creerEquipeTest('eq1', ['j1', 'j2', 'j3'], 'club1'),
+    );
+    const c = new Concours(
+      'c-retour', 'Concours à corriger',
+      new DateRange(new Date('2025-06-15'), new Date('2025-06-15')),
+      'Boulodrome Municipal', 'org1', creerFormuleTest(), new ReglementConcours(),
+      StatutConcours.EN_COURS, [], [], [inscription],
+    );
+    const phase = new Phase('phase1', c.id, TypePhase.POULES, 1, creerFormuleTest().phases[0]);
+    const tour = new Tour('tour1', phase.id, 1);
+    tour.ajouterMatch(new Match('match1', tour.id, 'eq1', 'eq2'));
+    phase.ajouterTour(tour);
+    c.ajouterPhase(phase);
+
+    c.revenirAuxInscriptionsAvantDemarrage();
+
+    expect(c.statut).toBe(StatutConcours.INSCRIPTIONS_OUVERTES);
+    expect(c.phases).toHaveLength(0);
+    expect(c.inscriptionsActives).toEqual([inscription]);
+  });
+
+  it('refuse de revenir aux inscriptions dès qu’un match a commencé', () => {
+    const c = new Concours(
+      'c-demarre', 'Concours commencé',
+      new DateRange(new Date('2025-06-15'), new Date('2025-06-15')),
+      'Boulodrome Municipal', 'org1', creerFormuleTest(), new ReglementConcours(),
+      StatutConcours.EN_COURS,
+    );
+    const phase = new Phase('phase1', c.id, TypePhase.POULES, 1, creerFormuleTest().phases[0]);
+    const tour = new Tour('tour1', phase.id, 1);
+    const match = new Match('match1', tour.id, 'eq1', 'eq2');
+    match.demarrer();
+    tour.ajouterMatch(match);
+    phase.ajouterTour(tour);
+    c.ajouterPhase(phase);
+
+    expect(() => c.revenirAuxInscriptionsAvantDemarrage())
+      .toThrow('Impossible de revenir aux inscriptions : un match a déjà commencé');
+    expect(c.statut).toBe(StatutConcours.EN_COURS);
+    expect(c.phases).toHaveLength(1);
+  });
+
   it('TERMINE → ARCHIVE', () => {
     const c = creerConcoursTest();
     c.ouvrirInscriptions();

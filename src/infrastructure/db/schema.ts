@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, jsonb, boolean } from 'drizzle-orm/pg-core';
 
 /**
  * Table unique : agrégat Concours complet sérialisé en JSONB.
@@ -11,4 +11,13 @@ export const concoursTable = pgTable('concours', {
   organisateur_id: text('organisateur_id').notNull(),
   data:            jsonb('data').notNull(),
   updated_at:      timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const joueursClubTable = pgTable('joueurs_club', {
+  id:         text('id').primaryKey(),
+  club_id:    text('club_id').notNull(),
+  nom:        text('nom').notNull(),
+  poste:      text('poste').notNull(),
+  actif:      boolean('actif').notNull().default(true),
+  updated_at: timestamp('updated_at').notNull().defaultNow(),
 });

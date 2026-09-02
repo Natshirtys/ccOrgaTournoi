@@ -13,13 +13,17 @@ import { AuthService } from './auth/auth-service.js';
  */
 export async function buildContext(): Promise<AppContext> {
   let concoursRepository;
+  let joueurRepository;
 
   if (process.env.DATABASE_URL) {
     const { DrizzleConcoursRepository } = await import('../infrastructure/repositories/drizzle-concours-repository.js');
+    const { DrizzleJoueurRepository } = await import('../infrastructure/repositories/drizzle-joueur-repository.js');
     concoursRepository = new DrizzleConcoursRepository();
+    joueurRepository = new DrizzleJoueurRepository();
     console.log('📦 Persistance : Neon/PostgreSQL (Drizzle)');
   } else {
     concoursRepository = new InMemoryConcoursRepository();
+    joueurRepository = new InMemoryJoueurRepository();
     console.log('💾 Persistance : InMemory (pas de DATABASE_URL)');
   }
 
@@ -43,7 +47,7 @@ export async function buildContext(): Promise<AppContext> {
   return {
     concoursRepository,
     clubRepository: new InMemoryClubRepository(),
-    joueurRepository: new InMemoryJoueurRepository(),
+    joueurRepository,
     eventPublisher: new InMemoryEventBus(),
     authService,
   };

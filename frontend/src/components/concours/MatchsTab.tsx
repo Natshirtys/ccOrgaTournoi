@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, FileText, Play, Shuffle } from 'lucide-react';
+import { CheckCircle2, FileText, Play, Shuffle, Undo2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ActionError } from '@/components/ui/action-error';
@@ -26,6 +26,7 @@ import { MatchRow } from './MatchRow';
 import { PoolGroupCard } from './PoolGroupCard';
 import { KnockoutBracket } from './KnockoutBracket';
 import { demarrerTousLesMatchs, fetchMatchs, refaireTirageMelee } from '@/api/matchs';
+import { revenirAuxInscriptions } from '@/api/concours';
 import type { ConcoursDetail, MatchDto, TerrainDto } from '@/types/concours';
 
 const PHASE_LABELS: Record<string, string> = {
@@ -54,6 +55,7 @@ function getPhaseHeaderClass(phaseType: string, phaseNom?: string): string {
 interface MatchsTabProps {
   concours: ConcoursDetail;
   readOnly?: boolean;
+  onReturnToInscriptions?: () => void;
 }
 
 interface PoolGroup {
@@ -91,7 +93,7 @@ function reconstructPools(matchs: MatchDto[]): PoolGroup[] {
   return pools;
 }
 
-export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
+export function MatchsTab({ concours, readOnly = false, onReturnToInscriptions }: MatchsTabProps) {
   const queryClient = useQueryClient();
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<unknown>(null);
@@ -126,6 +128,18 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
   const redrawMutation = useMutation({
     mutationFn: () => refaireTirageMelee(concours.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['concours', concours.id, 'matchs'] }),
+  });
+  const canReturnToInscriptions = !readOnly
+    && concours.statut === 'EN_COURS'
+    && allMatchs.length > 0
+    && allMatchs.every((match) => match.statut === 'PROGRAMME' || match.statut === 'BYE');
+  const returnToInscriptionsMutation = useMutation({
+    mutationFn: () => revenirAuxInscriptions(concours.id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['concours', concours.id] });
+      await queryClient.invalidateQueries({ queryKey: ['concours'] });
+      onReturnToInscriptions?.();
+    },
   });
 
   const equipeLookup = useMemo(() => {
@@ -233,10 +247,41 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        {canRedraw && (
-          <Button variant="outline" className="h-10 w-full gap-2 sm:w-auto" onClick={() => redrawMutation.mutate()} disabled={redrawMutation.isPending}>
-            <Shuffle className="h-4 w-4" />Refaire le tirage
-          </Button>
+        {(canRedraw || canReturnToInscriptions) && (
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            {canRedraw && (
+              <Button variant="outline" className="h-10 w-full gap-2 sm:w-auto" onClick={() => redrawMutation.mutate()} disabled={redrawMutation.isPending}>
+                <Shuffle className="h-4 w-4" />Refaire le tirage
+              </Button>
+            )}
+            {canReturnToInscriptions && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="h-10 w-full cursor-pointer gap-2 sm:w-auto">
+                    <Undo2 className="h-4 w-4" />Corriger les inscriptions
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Revenir aux inscriptions ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Le tirage actuel sera supprimé. Les joueurs inscrits seront conservés et pourront être modifiés.
+                      Vous devrez ensuite clôturer les inscriptions et relancer le tirage.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Conserver le tirage</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => returnToInscriptionsMutation.mutate()}
+                      disabled={returnToInscriptionsMutation.isPending}
+                    >
+                      Rouvrir les inscriptions
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         )}
         {!readOnly && matchsPrets.length > 0 && (
           <AlertDialog>
@@ -282,7 +327,7 @@ export function MatchsTab({ concours, readOnly = false }: MatchsTabProps) {
           {isExporting ? 'Génération…' : 'Exporter feuilles de match'}
         </Button>
       </div>
-      <ActionError error={demarrerTousMutation.error ?? redrawMutation.error ?? exportError} />
+      <ActionError error={demarrerTousMutation.error ?? redrawMutation.error ?? returnToInscriptionsMutation.error ?? exportError} />
       {matchsByPhaseAndTour.map(({ phaseId, phaseType, phaseNom, tours }) => {
         if (isRoundRobin && phaseType === 'CONSOLANTE') return null;
         const phaseData = matchsByPhase.get(phaseId);

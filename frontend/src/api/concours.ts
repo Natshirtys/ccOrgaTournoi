@@ -33,6 +33,10 @@ export function cloturerInscriptions(id: string): Promise<{ statut: string }> {
   return apiFetch(`/concours/${id}/cloturer-inscriptions`, { method: 'POST' });
 }
 
+export function revenirAuxInscriptions(id: string): Promise<{ statut: string }> {
+  return apiFetch(`/concours/${id}/revenir-inscriptions`, { method: 'POST' });
+}
+
 export function inscrireEquipe(id: string, payload: InscrireEquipePayload): Promise<void> {
   return apiFetch(`/concours/${id}/inscriptions`, {
     method: 'POST',

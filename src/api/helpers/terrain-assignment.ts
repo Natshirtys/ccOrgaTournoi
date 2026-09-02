@@ -27,21 +27,20 @@ export function assignerTerrainsAuTour(concours: Concours, tour: Tour): void {
     .filter((t) => t.disponible && !terrainsOccupes.has(t.id))
     .map((t) => t.id);
 
-  // 3. Construire l'historique terrain par équipe (tous matchs passés du concours)
-  const historiqueParEquipe = new Map<string, Set<string>>();
+  // 3. Construire l'historique terrain par équipe, ou par joueur pour les mêlées.
+  // Les équipes d'une mêlée tournante changent à chaque partie : leurs identifiants
+  // ne permettent donc pas de détecter qu'un joueur revient sur le même terrain.
+  const historiqueParConcurrent = new Map<string, Map<string, number>>();
+  const dernierTerrainParConcurrent = new Map<string, string>();
   for (const phase of concours.phases) {
     for (const t of phase.tours) {
       for (const m of t.matchs) {
         if (!m.terrainId) continue;
-        if (!historiqueParEquipe.has(m.equipeAId)) {
-          historiqueParEquipe.set(m.equipeAId, new Set());
-        }
-        historiqueParEquipe.get(m.equipeAId)!.add(m.terrainId);
-        if (m.equipeBId) {
-          if (!historiqueParEquipe.has(m.equipeBId)) {
-            historiqueParEquipe.set(m.equipeBId, new Set());
-          }
-          historiqueParEquipe.get(m.equipeBId)!.add(m.terrainId);
+        for (const concurrentId of obtenirConcurrentIds(m)) {
+          const historique = historiqueParConcurrent.get(concurrentId) ?? new Map<string, number>();
+          historique.set(m.terrainId, (historique.get(m.terrainId) ?? 0) + 1);
+          historiqueParConcurrent.set(concurrentId, historique);
+          dernierTerrainParConcurrent.set(concurrentId, m.terrainId);
         }
       }
     }
@@ -53,8 +52,7 @@ export function assignerTerrainsAuTour(concours: Concours, tour: Tour): void {
   for (const match of tour.matchs) {
     if (match.isBye || disponibles.length === 0) continue;
 
-    const histA = historiqueParEquipe.get(match.equipeAId);
-    const histB = match.equipeBId ? historiqueParEquipe.get(match.equipeBId) : undefined;
+    const concurrentIds = obtenirConcurrentIds(match);
 
     // Scorer chaque terrain dispo
     let bestIdx = 0;
@@ -63,8 +61,12 @@ export function assignerTerrainsAuTour(concours: Concours, tour: Tour): void {
     for (let i = 0; i < disponibles.length; i++) {
       const tid = disponibles[i];
       let score = 0;
-      if (histA?.has(tid)) score++;
-      if (histB?.has(tid)) score++;
+      for (const concurrentId of concurrentIds) {
+        // Éviter en priorité le terrain de la partie précédente, puis répartir
+        // aussi les passages sur l'ensemble du concours.
+        if (dernierTerrainParConcurrent.get(concurrentId) === tid) score += 1000;
+        score += historiqueParConcurrent.get(concurrentId)?.get(tid) ?? 0;
+      }
       if (score < bestScore) {
         bestScore = score;
         bestIdx = i;
@@ -75,20 +77,22 @@ export function assignerTerrainsAuTour(concours: Concours, tour: Tour): void {
     match.assignerTerrain(chosenTerrainId);
 
     // Mettre à jour l'historique
-    if (!historiqueParEquipe.has(match.equipeAId)) {
-      historiqueParEquipe.set(match.equipeAId, new Set());
-    }
-    historiqueParEquipe.get(match.equipeAId)!.add(chosenTerrainId);
-    if (match.equipeBId) {
-      if (!historiqueParEquipe.has(match.equipeBId)) {
-        historiqueParEquipe.set(match.equipeBId, new Set());
-      }
-      historiqueParEquipe.get(match.equipeBId)!.add(chosenTerrainId);
+    for (const concurrentId of concurrentIds) {
+      const historique = historiqueParConcurrent.get(concurrentId) ?? new Map<string, number>();
+      historique.set(chosenTerrainId, (historique.get(chosenTerrainId) ?? 0) + 1);
+      historiqueParConcurrent.set(concurrentId, historique);
+      dernierTerrainParConcurrent.set(concurrentId, chosenTerrainId);
     }
 
     // Retirer de la liste des disponibles
     disponibles.splice(bestIdx, 1);
   }
+}
+
+function obtenirConcurrentIds(match: import('../../domain/concours/entities/match.js').Match): string[] {
+  const participantIds = [...match.participantIdsEquipeA, ...match.participantIdsEquipeB];
+  if (participantIds.length > 0) return participantIds;
+  return [match.equipeAId, ...(match.equipeBId ? [match.equipeBId] : [])];
 }
 
 /**

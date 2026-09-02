@@ -809,4 +809,63 @@ describe('API Concours', () => {
     expect(classementRes.body.classementIndividuel).toBe(true);
     expect(classementRes.body.classement).toHaveLength(8);
   });
+
+  it('rouvre les inscriptions après un tirage intact et conserve les joueurs', async () => {
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'Mêlée à corriger',
+      dateDebut: '2026-09-06',
+      typeEquipe: 'DOUBLETTE',
+      typePhase: 'MELEE_TOURNANTE',
+      nbParties: 3,
+      nbTerrains: 2,
+    });
+    const id = createRes.body.id as string;
+    await request(app, 'POST', `/api/v1/concours/${id}/ouvrir-inscriptions`);
+    for (let index = 1; index <= 8; index++) {
+      await request(app, 'POST', `/api/v1/concours/${id}/participants-melee`, {
+        nom: `Joueur ${index}`,
+        poste: index % 2 === 0 ? 'TIREUR' : 'POINTEUR',
+      });
+    }
+    await request(app, 'POST', `/api/v1/concours/${id}/cloturer-inscriptions`);
+    await request(app, 'POST', `/api/v1/concours/${id}/tirage`, {});
+
+    const reopenRes = await request(app, 'POST', `/api/v1/concours/${id}/revenir-inscriptions`);
+    expect(reopenRes.status).toBe(200);
+    expect(reopenRes.body.statut).toBe('INSCRIPTIONS_OUVERTES');
+    expect(reopenRes.body.nbParticipants).toBe(8);
+
+    const detailRes = await request(app, 'GET', `/api/v1/concours/${id}`);
+    expect(detailRes.body.statut).toBe('INSCRIPTIONS_OUVERTES');
+    expect(detailRes.body.phases).toEqual([]);
+    expect(detailRes.body.participantsMelee).toHaveLength(8);
+  });
+
+  it('refuse de rouvrir les inscriptions après le démarrage d’un match', async () => {
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'Mêlée déjà commencée',
+      dateDebut: '2026-09-06',
+      typeEquipe: 'DOUBLETTE',
+      typePhase: 'MELEE_TOURNANTE',
+      nbParties: 3,
+      nbTerrains: 2,
+    });
+    const id = createRes.body.id as string;
+    await request(app, 'POST', `/api/v1/concours/${id}/ouvrir-inscriptions`);
+    for (let index = 1; index <= 8; index++) {
+      await request(app, 'POST', `/api/v1/concours/${id}/participants-melee`, {
+        nom: `Joueur ${index}`,
+        poste: index % 2 === 0 ? 'TIREUR' : 'POINTEUR',
+      });
+    }
+    await request(app, 'POST', `/api/v1/concours/${id}/cloturer-inscriptions`);
+    await request(app, 'POST', `/api/v1/concours/${id}/tirage`, {});
+    const matchsRes = await request(app, 'GET', `/api/v1/concours/${id}/matchs`);
+    const matchId = (matchsRes.body.data as Array<{ id: string }>)[0].id;
+    await request(app, 'POST', `/api/v1/concours/${id}/matchs/${matchId}/demarrer`);
+
+    const reopenRes = await request(app, 'POST', `/api/v1/concours/${id}/revenir-inscriptions`);
+    expect(reopenRes.status).toBe(400);
+    expect(reopenRes.body.error).toMatch(/un match a déjà commencé/);
+  });
 });

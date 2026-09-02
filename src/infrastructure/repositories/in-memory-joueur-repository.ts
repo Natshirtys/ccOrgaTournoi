@@ -27,6 +27,10 @@ export class InMemoryJoueurRepository implements JoueurRepository {
     this.store.set(joueur.id, joueur);
   }
 
+  async delete(id: EntityId): Promise<void> {
+    this.store.delete(id);
+  }
+
   nextId(): EntityId {
     this.counter++;
     return `joueur-${this.counter}`;

@@ -14,5 +14,6 @@ export interface JoueurRepository {
   findByClub(clubId: EntityId): Promise<Joueur[]>;
   findByLicence(numero: string): Promise<Joueur | null>;
   save(joueur: Joueur): Promise<void>;
+  delete(id: EntityId): Promise<void>;
   nextId(): EntityId;
 }

@@ -286,6 +286,21 @@ export function createConcoursRouter(ctx: AppContext): Router {
     res.json({ statut: concours.statut });
   }));
 
+  // POST /:id/revenir-inscriptions — Supprimer un tirage encore intact et corriger les inscrits
+  router.post('/:id/revenir-inscriptions', protect, asyncHandler(async (req, res) => {
+    const concours = await ctx.concoursRepository.findById(param(req.params.id));
+    if (!concours) throw ApiError.notFound('Concours non trouvé');
+
+    concours.revenirAuxInscriptionsAvantDemarrage();
+    await ctx.concoursRepository.save(concours);
+
+    res.json({
+      statut: concours.statut,
+      nbEquipesInscrites: concours.nbEquipesInscrites,
+      nbParticipants: concours.participantsMeleeActifs.length,
+    });
+  }));
+
   // POST /:id/terrains — Ajouter un terrain
   router.post('/:id/terrains', protect, validateBody(ajouterTerrainSchema), asyncHandler(async (req, res) => {
     const concours = await ctx.concoursRepository.findById(param(req.params.id));

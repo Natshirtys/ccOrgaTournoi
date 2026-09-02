@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { assignerTerrainsAuTour } from '../../api/helpers/terrain-assignment.js';
 import { Concours } from '../../domain/concours/entities/concours.js';
 import { Match } from '../../domain/concours/entities/match.js';
+import { Phase } from '../../domain/concours/entities/phase.js';
 import { Terrain } from '../../domain/concours/entities/terrain.js';
 import { Tour } from '../../domain/concours/entities/tour.js';
 import { CritereClassement, TypeEquipe, TypePhase } from '../../domain/shared/enums.js';
@@ -44,5 +45,33 @@ describe('assignerTerrainsAuTour', () => {
     expect(tour.matchs[0].terrainId).toBe('terrain-1');
     expect(tour.matchs[1].terrainId).toBeNull();
     expect(tour.matchs.every((match) => match.terrainId !== 'terrain-2')).toBe(true);
+  });
+
+  it('évite pour chaque joueur le terrain utilisé lors de la partie précédente', () => {
+    const concours = creerConcoursAvecTerrains();
+    concours.definirDisponibiliteTerrain('terrain-2', true);
+    const definition = concours.formule.phases[0];
+    const phase = new Phase('phase-1', concours.id, TypePhase.MELEE_TOURNANTE, 1, definition);
+    concours.ajouterPhase(phase);
+
+    const premierTour = new Tour('tour-1', phase.id, 1);
+    const ancienMatch = new Match(
+      'match-ancien', premierTour.id, 'ancienne-a', 'ancienne-b', 'terrain-1', null,
+      undefined, null, null, ['p1', 'p2'], ['p3', 'p4'],
+    );
+    premierTour.ajouterMatch(ancienMatch);
+    phase.ajouterTour(premierTour);
+
+    const nouveauTour = new Tour('tour-2', phase.id, 2);
+    const nouveauMatch = new Match(
+      'match-nouveau', nouveauTour.id, 'nouvelle-a', 'nouvelle-b', null, null,
+      undefined, null, null, ['p1', 'p3'], ['p5', 'p6'],
+    );
+    nouveauTour.ajouterMatch(nouveauMatch);
+    phase.ajouterTour(nouveauTour);
+
+    assignerTerrainsAuTour(concours, nouveauTour);
+
+    expect(nouveauMatch.terrainId).toBe('terrain-2');
   });
 });

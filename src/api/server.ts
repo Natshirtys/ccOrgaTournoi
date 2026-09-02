@@ -4,6 +4,7 @@ import { errorHandler } from './middleware/error-handler.js';
 import { createConcoursRouter } from './routes/concours.js';
 import { createMatchsRouter } from './routes/matchs.js';
 import { createAuthRouter } from './routes/auth.js';
+import { createJoueursClubRouter } from './routes/joueurs-club.js';
 import { createAuthenticateMiddleware } from './auth/auth-middleware.js';
 import { AppContext } from './context.js';
 
@@ -36,6 +37,7 @@ export function createApp(context: AppContext): express.Express {
   // Routes
   app.use('/api/v1/concours', createConcoursRouter(context));
   app.use('/api/v1/concours', createMatchsRouter(context));
+  app.use('/api/v1/joueurs-club', createJoueursClubRouter(context));
 
   // Error handler (doit être dernier)
   app.use(errorHandler);

@@ -16,18 +16,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ActionError } from '@/components/ui/action-error';
 import { modifierInscription } from '@/api/concours';
+import { ClubPlayerPickerDialog } from '@/components/club/ClubPlayerPickerDialog';
 import type { InscriptionDto } from '@/types/concours';
 
 interface ModifierEquipeDialogProps {
   concoursId: string;
   inscription: InscriptionDto;
   joueursAttendus: number;
+  excludedPlayerNames?: string[];
 }
 
 export function ModifierEquipeDialog({
   concoursId,
   inscription,
   joueursAttendus,
+  excludedPlayerNames = [],
 }: ModifierEquipeDialogProps) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -76,6 +79,9 @@ export function ModifierEquipeDialog({
     mutation.mutate();
   }
 
+  const joueursSaisis = joueurs.split(',').map((joueur) => joueur.trim()).filter(Boolean);
+  const placesRestantes = Math.max(0, joueursAttendus - joueursSaisis.length);
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -109,6 +115,16 @@ export function ModifierEquipeDialog({
               onChange={(event) => setJoueurs(event.target.value)}
               placeholder="Dupont, Martin, Durand"
             />
+            {placesRestantes > 0 && (
+              <ClubPlayerPickerDialog
+                excludedNames={[...excludedPlayerNames, ...joueursSaisis]}
+                maxSelection={placesRestantes}
+                onSelect={(selection) => {
+                  setJoueurs([...joueursSaisis, ...selection.map((joueur) => joueur.nom)].join(', '));
+                  setValidationError(null);
+                }}
+              />
+            )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor={`club-${inscription.id}`}>Club</Label>

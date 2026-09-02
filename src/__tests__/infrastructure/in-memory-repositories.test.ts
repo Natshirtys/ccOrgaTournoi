@@ -148,4 +148,10 @@ describe('InMemoryJoueurRepository', () => {
   it('nextId génère des IDs uniques', () => {
     expect(repo.nextId()).toMatch(/^joueur-/);
   });
+
+  it('supprime un joueur', async () => {
+    await repo.save(new Joueur('j-1', 'Dupont', 'Jean', null, 'club-1', 'Senior', null));
+    await repo.delete('j-1');
+    expect(await repo.findById('j-1')).toBeNull();
+  });
 });

@@ -51,6 +51,18 @@ export interface ParticipantMeleeDto {
   actif: boolean;
 }
 
+export interface JoueurClubDto {
+  id: string;
+  nom: string;
+  poste: PosteMelee;
+  actif: boolean;
+}
+
+export interface JoueurClubPayload {
+  nom: string;
+  poste: PosteMelee;
+}
+
 export type StatutMatch =
   | 'PROGRAMME'
   | 'EN_COURS'

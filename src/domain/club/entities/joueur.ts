@@ -1,5 +1,6 @@
 import { Entity, EntityId } from '../../../shared/types.js';
 import { LicenceNumber } from '../../shared/value-objects.js';
+import { PosteMelee } from '../../shared/enums.js';
 
 export class Joueur extends Entity {
   constructor(
@@ -11,6 +12,7 @@ export class Joueur extends Entity {
     public readonly categorie: string,
     public readonly classement: number | null,
     private _actif: boolean = true,
+    public readonly poste: PosteMelee = PosteMelee.POLYVALENT,
   ) {
     super(id);
   }
@@ -20,7 +22,7 @@ export class Joueur extends Entity {
   }
 
   get nomComplet(): string {
-    return `${this.prenom} ${this.nom}`;
+    return `${this.prenom} ${this.nom}`.trim();
   }
 
   desactiver(): void {

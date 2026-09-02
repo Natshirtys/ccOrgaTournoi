@@ -15,13 +15,15 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ActionError } from '@/components/ui/action-error';
 import { inscrireEquipe } from '@/api/concours';
+import { ClubPlayerPickerDialog } from '@/components/club/ClubPlayerPickerDialog';
 
 interface InscrireEquipeDialogProps {
   concoursId: string;
   joueursAttendus: number;
+  excludedPlayerNames?: string[];
 }
 
-export function InscrireEquipeDialog({ concoursId, joueursAttendus }: InscrireEquipeDialogProps) {
+export function InscrireEquipeDialog({ concoursId, joueursAttendus, excludedPlayerNames = [] }: InscrireEquipeDialogProps) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [nomEquipe, setNomEquipe] = useState('');
@@ -64,6 +66,9 @@ export function InscrireEquipeDialog({ concoursId, joueursAttendus }: InscrireEq
     mutation.mutate();
   }
 
+  const joueursSaisis = joueurs.split(',').map((joueur) => joueur.trim()).filter(Boolean);
+  const placesRestantes = Math.max(0, joueursAttendus - joueursSaisis.length);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -94,6 +99,16 @@ export function InscrireEquipeDialog({ concoursId, joueursAttendus }: InscrireEq
               onChange={(e) => setJoueurs(e.target.value)}
               placeholder="Dupont, Martin, Durand"
             />
+            {placesRestantes > 0 && (
+              <ClubPlayerPickerDialog
+                excludedNames={[...excludedPlayerNames, ...joueursSaisis]}
+                maxSelection={placesRestantes}
+                onSelect={(selection) => {
+                  setJoueurs([...joueursSaisis, ...selection.map((joueur) => joueur.nom)].join(', '));
+                  setValidationError(null);
+                }}
+              />
+            )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="club">Club</Label>

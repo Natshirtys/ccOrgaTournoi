@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { ActionError } from '@/components/ui/action-error';
 import { definirParticipantMeleeActif, inscrireParticipantMelee, modifierParticipantMelee, supprimerParticipantMelee } from '@/api/concours';
 import type { ConcoursDetail, ParticipantMeleeDto, PosteMelee } from '@/types/concours';
+import { ClubPlayerPickerDialog } from '@/components/club/ClubPlayerPickerDialog';
 
 const POSTE_LABELS: Record<PosteMelee, string> = {
   POINTEUR: 'Pointeur',
@@ -87,7 +88,20 @@ export function MeleeParticipantsTab({ concours, readOnly = false }: { concours:
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Users className="h-4 w-4" /><span><strong className="text-foreground">{actifs}</strong> joueur{actifs > 1 ? 's' : ''} disponible{actifs > 1 ? 's' : ''}</span>
         </div>
-        {canEdit && <ParticipantDialog concoursId={concours.id} />}
+        {canEdit && (
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <ClubPlayerPickerDialog
+              excludedNames={concours.participantsMelee.map((participant) => participant.nom)}
+              onSelect={async (joueurs) => {
+                for (const joueur of joueurs) {
+                  await inscrireParticipantMelee(concours.id, { nom: joueur.nom, poste: joueur.poste });
+                }
+                invalidate();
+              }}
+            />
+            <ParticipantDialog concoursId={concours.id} />
+          </div>
+        )}
       </div>
       {!compatible && concours.participantsMelee.length > 0 && (
         <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">

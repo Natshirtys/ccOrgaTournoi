@@ -76,7 +76,11 @@ function ConcoursDetailContent({
           <TerrainsTab concours={concours} readOnly={readOnly} />
         </TabsContent>
         <TabsContent value="matchs">
-          <MatchsTab concours={concours} readOnly={readOnly} />
+          <MatchsTab
+            concours={concours}
+            readOnly={readOnly}
+            onReturnToInscriptions={() => setActiveTab('inscriptions')}
+          />
         </TabsContent>
         {hasClassement && (
           <TabsContent value="classement">
