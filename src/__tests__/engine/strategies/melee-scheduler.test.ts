@@ -54,6 +54,22 @@ describe('MeleeScheduler', () => {
     }
   });
 
+  it('forme toujours 12 doublettes équilibrées avec 12 pointeurs et 12 tireurs ou polyvalents', () => {
+    const clubPlayers = [
+      ...Array.from({ length: 12 }, (_, index) => ({ id: `p${index + 1}`, poste: PosteMelee.POINTEUR })),
+      ...Array.from({ length: 7 }, (_, index) => ({ id: `t${index + 1}`, poste: PosteMelee.TIREUR })),
+      ...Array.from({ length: 5 }, (_, index) => ({ id: `v${index + 1}`, poste: PosteMelee.POLYVALENT })),
+    ];
+
+    for (let seed = 1; seed <= 20; seed++) {
+      const round = generateRotatingMeleeRound(clubPlayers, 2, [], seededRandom(seed));
+      for (const team of round.flatMap((match) => [match.equipeA, match.equipeB])) {
+        const roles = team.map((id) => clubPlayers.find((player) => player.id === id)!.poste);
+        expect(roles.filter((role) => role === PosteMelee.POINTEUR)).toHaveLength(1);
+      }
+    }
+  });
+
   it('conserve les équipes de la mêlée classique entre les parties', () => {
     const teams = generateFixedMeleeTeams(players, 2, seededRandom());
     const first = pairFixedMeleeTeams(teams, [], false, seededRandom(3));

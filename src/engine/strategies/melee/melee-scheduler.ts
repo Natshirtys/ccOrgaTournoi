@@ -40,6 +40,38 @@ function rolePenalty(team: readonly MeleePlayer[]): number {
   return (missingPointer + missingShooter) * 20 + Math.max(0, pointers - 1) + Math.max(0, shooters - 1);
 }
 
+function improveRoleBalance(source: readonly MeleePlayer[][]): MeleePlayer[][] {
+  const teams = source.map((team) => [...team]);
+
+  while (true) {
+    let bestImprovement = 0;
+    let bestSwap: { teamA: number; playerA: number; teamB: number; playerB: number } | null = null;
+
+    for (let teamA = 0; teamA < teams.length; teamA++) {
+      for (let teamB = teamA + 1; teamB < teams.length; teamB++) {
+        const before = rolePenalty(teams[teamA]) + rolePenalty(teams[teamB]);
+        for (let playerA = 0; playerA < teams[teamA].length; playerA++) {
+          for (let playerB = 0; playerB < teams[teamB].length; playerB++) {
+            [teams[teamA][playerA], teams[teamB][playerB]] = [teams[teamB][playerB], teams[teamA][playerA]];
+            const after = rolePenalty(teams[teamA]) + rolePenalty(teams[teamB]);
+            [teams[teamA][playerA], teams[teamB][playerB]] = [teams[teamB][playerB], teams[teamA][playerA]];
+
+            const improvement = before - after;
+            if (improvement > bestImprovement) {
+              bestImprovement = improvement;
+              bestSwap = { teamA, playerA, teamB, playerB };
+            }
+          }
+        }
+      }
+    }
+
+    if (!bestSwap) return teams;
+    const { teamA, playerA, teamB, playerB } = bestSwap;
+    [teams[teamA][playerA], teams[teamB][playerB]] = [teams[teamB][playerB], teams[teamA][playerA]];
+  }
+}
+
 function buildCounts(history: readonly MeleeMatchHistory[]) {
   const partners = new Map<string, number>();
   const opponents = new Map<string, number>();
@@ -114,8 +146,9 @@ export function generateRotatingMeleeRound(
   let bestScore: ScheduleScore | null = null;
   for (let attempt = 0; attempt < 500; attempt++) {
     const ordered = shuffle(players, random);
-    const teams: MeleePlayer[][] = [];
+    let teams: MeleePlayer[][] = [];
     for (let i = 0; i < ordered.length; i += playersPerTeam) teams.push(ordered.slice(i, i + playersPerTeam));
+    teams = improveRoleBalance(teams);
     const score = scheduleScore(teams, history);
     if (isBetterScore(score, bestScore)) {
       best = teams;
@@ -139,8 +172,9 @@ export function generateFixedMeleeTeams(
   let bestScore = Number.POSITIVE_INFINITY;
   for (let attempt = 0; attempt < 300; attempt++) {
     const ordered = shuffle(players, random);
-    const teams: MeleePlayer[][] = [];
+    let teams: MeleePlayer[][] = [];
     for (let i = 0; i < ordered.length; i += playersPerTeam) teams.push(ordered.slice(i, i + playersPerTeam));
+    teams = improveRoleBalance(teams);
     const score = teams.reduce((sum, team) => sum + rolePenalty(team), 0);
     if (score < bestScore) { best = teams; bestScore = score; }
   }
