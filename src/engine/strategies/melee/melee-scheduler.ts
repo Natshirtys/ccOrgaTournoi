@@ -62,19 +62,36 @@ function buildCounts(history: readonly MeleeMatchHistory[]) {
   return { partners, opponents };
 }
 
-function scheduleScore(teams: readonly MeleePlayer[][], history: readonly MeleeMatchHistory[]): number {
+interface ScheduleScore {
+  roles: number;
+  partners: number;
+  opponents: number;
+}
+
+function isBetterScore(candidate: ScheduleScore, reference: ScheduleScore | null): boolean {
+  if (!reference) return true;
+  if (candidate.roles !== reference.roles) return candidate.roles < reference.roles;
+  if (candidate.partners !== reference.partners) return candidate.partners < reference.partners;
+  return candidate.opponents < reference.opponents;
+}
+
+function scheduleScore(teams: readonly MeleePlayer[][], history: readonly MeleeMatchHistory[]): ScheduleScore {
   const { partners, opponents } = buildCounts(history);
-  let score = teams.reduce((sum, team) => sum + rolePenalty(team), 0);
+  const score: ScheduleScore = {
+    roles: teams.reduce((sum, team) => sum + rolePenalty(team), 0),
+    partners: 0,
+    opponents: 0,
+  };
   for (let index = 0; index < teams.length; index += 2) {
     const a = teams[index];
     const b = teams[index + 1];
     for (let i = 0; i < a.length; i++) {
-      for (let j = i + 1; j < a.length; j++) score += (partners.get(pairKey(a[i].id, a[j].id)) ?? 0) * 1000;
+      for (let j = i + 1; j < a.length; j++) score.partners += partners.get(pairKey(a[i].id, a[j].id)) ?? 0;
     }
     for (let i = 0; i < b.length; i++) {
-      for (let j = i + 1; j < b.length; j++) score += (partners.get(pairKey(b[i].id, b[j].id)) ?? 0) * 1000;
+      for (let j = i + 1; j < b.length; j++) score.partners += partners.get(pairKey(b[i].id, b[j].id)) ?? 0;
     }
-    for (const pa of a) for (const pb of b) score += (opponents.get(pairKey(pa.id, pb.id)) ?? 0) * 100;
+    for (const pa of a) for (const pb of b) score.opponents += opponents.get(pairKey(pa.id, pb.id)) ?? 0;
   }
   return score;
 }
@@ -94,16 +111,16 @@ export function generateRotatingMeleeRound(
 ): MeleeScheduledMatch[] {
   validateMeleePlayerCount(players.length, playersPerTeam);
   let best: MeleePlayer[][] | null = null;
-  let bestScore = Number.POSITIVE_INFINITY;
+  let bestScore: ScheduleScore | null = null;
   for (let attempt = 0; attempt < 500; attempt++) {
     const ordered = shuffle(players, random);
     const teams: MeleePlayer[][] = [];
     for (let i = 0; i < ordered.length; i += playersPerTeam) teams.push(ordered.slice(i, i + playersPerTeam));
     const score = scheduleScore(teams, history);
-    if (score < bestScore) {
+    if (isBetterScore(score, bestScore)) {
       best = teams;
       bestScore = score;
-      if (score === 0) break;
+      if (score.roles === 0 && score.partners === 0 && score.opponents === 0) break;
     }
   }
   return (best ?? []).reduce<MeleeScheduledMatch[]>((matches, team, index, all) => {

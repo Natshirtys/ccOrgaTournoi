@@ -38,6 +38,22 @@ describe('MeleeScheduler', () => {
     expect(newPairs.every((pair) => !oldPairs.has(pair))).toBe(true);
   });
 
+  it('privilégie les postes équilibrés même si tous les binômes équilibrés ont déjà joué ensemble', () => {
+    const fourPlayers = players.slice(0, 4);
+    const history = [
+      { equipeA: ['p1', 'p2'], equipeB: ['p3', 'p4'] },
+      { equipeA: ['p1', 'p4'], equipeB: ['p3', 'p2'] },
+    ];
+
+    const round = generateRotatingMeleeRound(fourPlayers, 2, history, seededRandom(12));
+
+    for (const team of round.flatMap((match) => [match.equipeA, match.equipeB])) {
+      const roles = team.map((id) => fourPlayers.find((player) => player.id === id)?.poste);
+      expect(roles).toContain(PosteMelee.POINTEUR);
+      expect(roles).toContain(PosteMelee.TIREUR);
+    }
+  });
+
   it('conserve les équipes de la mêlée classique entre les parties', () => {
     const teams = generateFixedMeleeTeams(players, 2, seededRandom());
     const first = pairFixedMeleeTeams(teams, [], false, seededRandom(3));
