@@ -24,6 +24,7 @@ interface ModifierEquipeDialogProps {
   inscription: InscriptionDto;
   joueursAttendus: number;
   excludedPlayerNames?: string[];
+  isTeteATete?: boolean;
 }
 
 export function ModifierEquipeDialog({
@@ -31,22 +32,28 @@ export function ModifierEquipeDialog({
   inscription,
   joueursAttendus,
   excludedPlayerNames = [],
+  isTeteATete = false,
 }: ModifierEquipeDialogProps) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [nomEquipe, setNomEquipe] = useState(inscription.nomEquipe);
-  const [joueurs, setJoueurs] = useState((inscription.joueurs ?? []).join(', '));
+  const [joueurs, setJoueurs] = useState(
+    isTeteATete ? (inscription.joueurs?.[0] ?? inscription.nomEquipe) : (inscription.joueurs ?? []).join(', '),
+  );
   const [club, setClub] = useState(inscription.club ?? '');
   const [teteDeSerie, setTeteDeSerie] = useState(inscription.teteDeSerie);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: () => modifierInscription(concoursId, inscription.id, {
-      nomEquipe,
-      joueurs: joueurs.split(',').map((joueur) => joueur.trim()).filter(Boolean),
-      club,
-      teteDeSerie,
-    }),
+    mutationFn: () => {
+      const joueursList = joueurs.split(',').map((joueur) => joueur.trim()).filter(Boolean);
+      return modifierInscription(concoursId, inscription.id, {
+        nomEquipe: isTeteATete ? joueursList[0] : nomEquipe,
+        joueurs: joueursList,
+        club,
+        teteDeSerie,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['concours', concoursId] });
       queryClient.invalidateQueries({ queryKey: ['concours'] });
@@ -58,7 +65,7 @@ export function ModifierEquipeDialog({
     setOpen(nextOpen);
     if (nextOpen) {
       setNomEquipe(inscription.nomEquipe);
-      setJoueurs((inscription.joueurs ?? []).join(', '));
+      setJoueurs(isTeteATete ? (inscription.joueurs?.[0] ?? inscription.nomEquipe) : (inscription.joueurs ?? []).join(', '));
       setClub(inscription.club ?? '');
       setTeteDeSerie(inscription.teteDeSerie);
       setValidationError(null);
@@ -69,6 +76,10 @@ export function ModifierEquipeDialog({
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     const joueursList = joueurs.split(',').map((joueur) => joueur.trim()).filter(Boolean);
+    if (isTeteATete && joueursList.length === 0) {
+      setValidationError('Le nom du joueur est requis.');
+      return;
+    }
     if (joueursList.length > 0 && joueursList.length !== joueursAttendus) {
       setValidationError(
         `Cette formule attend exactement ${joueursAttendus} joueur${joueursAttendus > 1 ? 's' : ''}.`,
@@ -85,18 +96,18 @@ export function ModifierEquipeDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="icon-xs" variant="ghost" title="Modifier l'équipe">
+        <Button size="icon-xs" variant="ghost" title={isTeteATete ? 'Modifier le joueur' : "Modifier l'équipe"}>
           <Pencil />
           <span className="sr-only">Modifier {inscription.nomEquipe}</span>
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Modifier l’équipe</DialogTitle>
+          <DialogTitle>Modifier {isTeteATete ? 'le joueur' : 'l’équipe'}</DialogTitle>
           <DialogDescription>Corrigez les informations avant la clôture des inscriptions.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-2">
-          <div className="grid gap-2">
+          {!isTeteATete && <div className="grid gap-2">
             <Label htmlFor={`nom-equipe-${inscription.id}`}>Nom de l’équipe</Label>
             <Input
               id={`nom-equipe-${inscription.id}`}
@@ -104,10 +115,10 @@ export function ModifierEquipeDialog({
               onChange={(event) => setNomEquipe(event.target.value)}
               required
             />
-          </div>
+          </div>}
           <div className="grid gap-2">
             <Label htmlFor={`joueurs-${inscription.id}`}>
-              Joueurs <span className="text-xs text-muted-foreground">(optionnel, {joueursAttendus} attendu{joueursAttendus > 1 ? 's' : ''})</span>
+              {isTeteATete ? 'Nom du joueur' : 'Joueurs'} {!isTeteATete && <span className="text-xs text-muted-foreground">(optionnel, {joueursAttendus} attendu{joueursAttendus > 1 ? 's' : ''})</span>}
             </Label>
             <Input
               id={`joueurs-${inscription.id}`}

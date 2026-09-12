@@ -331,9 +331,11 @@ export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCard
             </div>
           )}
           <div>
-            <p className="text-muted-foreground">{typePhase === 'MELEE' || typePhase === 'MELEE_TOURNANTE' ? 'Joueurs / Terrains' : 'Équipes / Terrains'}</p>
+            <p className="text-muted-foreground">{typePhase === 'MELEE' || typePhase === 'MELEE_TOURNANTE' || concours.formule.typeEquipe === 'TETE_A_TETE' ? 'Joueurs / Terrains' : 'Équipes / Terrains'}</p>
             <p className="font-medium">
-              {typePhase === 'MELEE' || typePhase === 'MELEE_TOURNANTE' ? `${concours.nbParticipants} joueurs` : `${concours.nbEquipesInscrites} équipes`} · {concours.nbTerrains} terrains
+              {typePhase === 'MELEE' || typePhase === 'MELEE_TOURNANTE'
+                ? `${concours.nbParticipants} joueurs`
+                : `${concours.nbEquipesInscrites} ${concours.formule.typeEquipe === 'TETE_A_TETE' ? 'joueurs' : 'équipes'}`} · {concours.nbTerrains} terrains
             </p>
           </div>
         </div>

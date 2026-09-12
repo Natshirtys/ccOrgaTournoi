@@ -129,7 +129,7 @@ export function ArchivesTab({ archives, onSupprimer, onSelectConcours, onModifie
               </span>
               <span className="flex items-center gap-1 sm:hidden">
                 <Users className="h-3 w-3 shrink-0" />
-                {c.formule.typePhase === 'MELEE' || c.formule.typePhase === 'MELEE_TOURNANTE' ? `${c.nbParticipants} joueurs` : `${c.nbEquipesInscrites} équipes`}
+                {c.formule.typePhase === 'MELEE' || c.formule.typePhase === 'MELEE_TOURNANTE' ? `${c.nbParticipants} joueurs` : `${c.nbEquipesInscrites} ${c.formule.typeEquipe === 'TETE_A_TETE' ? 'joueurs' : 'équipes'}`}
               </span>
             </div>
           </div>
@@ -140,7 +140,7 @@ export function ArchivesTab({ archives, onSupprimer, onSelectConcours, onModifie
               <Users className="h-3.5 w-3.5 text-muted-foreground" />
               {c.formule.typePhase === 'MELEE' || c.formule.typePhase === 'MELEE_TOURNANTE' ? c.nbParticipants : c.nbEquipesInscrites}
             </span>
-            <span className="text-[10px] text-muted-foreground">{c.formule.typePhase === 'MELEE' || c.formule.typePhase === 'MELEE_TOURNANTE' ? 'joueurs' : 'équipes'}</span>
+            <span className="text-[10px] text-muted-foreground">{c.formule.typePhase === 'MELEE' || c.formule.typePhase === 'MELEE_TOURNANTE' || c.formule.typeEquipe === 'TETE_A_TETE' ? 'joueurs' : 'équipes'}</span>
           </div>
 
           {/* Actions */}

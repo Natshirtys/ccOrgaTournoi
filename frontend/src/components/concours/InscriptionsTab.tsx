@@ -37,7 +37,13 @@ export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabP
   const canInscrire = !readOnly && concours.statut === 'INSCRIPTIONS_OUVERTES';
   const inscriptions = concours.inscriptions;
   const joueursAttendus = JOUEURS_ATTENDUS[concours.formule.typeEquipe] ?? 1;
-  const joueursDejaInscrits = inscriptions.flatMap((inscription) => inscription.joueurs ?? []);
+  const isTeteATete = concours.formule.typeEquipe === 'TETE_A_TETE';
+  const joueursDejaInscrits = inscriptions.flatMap((inscription) =>
+    isTeteATete ? [inscription.joueurs?.[0] ?? inscription.nomEquipe] : (inscription.joueurs ?? []),
+  );
+  const libelleInscrits = isTeteATete
+    ? `joueur${inscriptions.length === 1 ? '' : 's'} inscrit${inscriptions.length === 1 ? '' : 's'}`
+    : `équipe${inscriptions.length === 1 ? '' : 's'} inscrite${inscriptions.length === 1 ? '' : 's'}`;
 
   const annulationMutation = useMutation({
     mutationFn: (inscriptionId: string) => annulerInscription(concours.id, inscriptionId),
@@ -59,17 +65,19 @@ export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabP
           <Users className="h-4 w-4" />
           <span>
             <span className="font-semibold text-foreground">{inscriptions.length}</span>
-            {' '}équipe{inscriptions.length > 1 ? 's' : ''} inscrite{inscriptions.length > 1 ? 's' : ''}
+            {' '}{libelleInscrits}
             {concours.formule.nbEquipesMax > 0 && (
               <span className="text-muted-foreground/70"> / {concours.formule.nbEquipesMax} max</span>
             )}
           </span>
         </div>
-        {canInscrire && (
+        {canInscrire && inscriptions.length < concours.formule.nbEquipesMax && (
           <InscrireEquipeDialog
             concoursId={concours.id}
             joueursAttendus={joueursAttendus}
             excludedPlayerNames={joueursDejaInscrits}
+            isTeteATete={isTeteATete}
+            placesDisponibles={Math.max(0, concours.formule.nbEquipesMax - inscriptions.length)}
           />
         )}
       </div>
@@ -80,10 +88,10 @@ export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabP
       {inscriptions.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-16">
           <UserRound className="mb-2 h-7 w-7 text-muted-foreground/50" />
-          <p className="text-sm font-medium text-muted-foreground">Aucune équipe inscrite</p>
+          <p className="text-sm font-medium text-muted-foreground">Aucun{isTeteATete ? ' joueur inscrit' : 'e équipe inscrite'}</p>
           {canInscrire && (
             <p className="mt-1 text-xs text-muted-foreground/70">
-              Utilisez le bouton ci-dessus pour inscrire la première équipe.
+              Utilisez le bouton ci-dessus pour inscrire {isTeteATete ? 'les premiers joueurs' : 'la première équipe'}.
             </p>
           )}
         </div>
@@ -115,7 +123,7 @@ export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabP
                 </div>
 
                 {/* Joueurs */}
-                {insc.joueurs && insc.joueurs.length > 0 && (
+                {!isTeteATete && insc.joueurs && insc.joueurs.length > 0 && (
                   <div className="mt-0.5 flex flex-wrap items-center gap-1">
                     {insc.joueurs.map((j) => (
                       <span key={j} className="rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
@@ -140,6 +148,7 @@ export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabP
                     concoursId={concours.id}
                     inscription={insc}
                     joueursAttendus={joueursAttendus}
+                    isTeteATete={isTeteATete}
                     excludedPlayerNames={joueursDejaInscrits.filter(
                       (nom) => !(insc.joueurs ?? []).includes(nom),
                     )}
@@ -150,7 +159,7 @@ export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabP
                         size="icon-xs"
                         variant="ghost"
                         className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        title="Retirer l'équipe"
+                        title={isTeteATete ? 'Retirer le joueur' : "Retirer l'équipe"}
                       >
                         <Trash2 />
                         <span className="sr-only">Retirer {insc.nomEquipe}</span>
@@ -158,18 +167,18 @@ export function InscriptionsTab({ concours, readOnly = false }: InscriptionsTabP
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Retirer cette équipe ?</AlertDialogTitle>
+                        <AlertDialogTitle>Retirer {isTeteATete ? 'ce joueur' : 'cette équipe'} ?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          L’inscription de « {insc.nomEquipe} » sera annulée. L’équipe ne participera pas au tirage.
+                          L’inscription de « {insc.nomEquipe} » sera annulée. {isTeteATete ? 'Le joueur' : 'L’équipe'} ne participera pas au tirage.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Conserver l’équipe</AlertDialogCancel>
+                        <AlertDialogCancel>Conserver {isTeteATete ? 'le joueur' : 'l’équipe'}</AlertDialogCancel>
                         <AlertDialogAction
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                           onClick={() => annulationMutation.mutate(insc.id)}
                         >
-                          Retirer l’équipe
+                          Retirer {isTeteATete ? 'le joueur' : 'l’équipe'}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

@@ -1,5 +1,5 @@
 import { Concours } from '../../domain/concours/entities/concours.js';
-import { StatutConcours, StatutMatch, StatutPhase } from '../../domain/shared/enums.js';
+import { StatutConcours, StatutMatch, StatutPhase, TypeEquipe } from '../../domain/shared/enums.js';
 
 export type CodeProchaineAction =
   | 'OUVRIR_INSCRIPTIONS'
@@ -30,12 +30,13 @@ const STATUTS_MATCH_TERMINES = new Set<StatutMatch>([
 ]);
 
 export function obtenirProchaineAction(concours: Concours): ProchaineAction {
+  const estTeteATete = concours.formule.typeEquipe === TypeEquipe.TETE_A_TETE;
   switch (concours.statut) {
     case StatutConcours.BROUILLON:
       return {
         code: 'OUVRIR_INSCRIPTIONS',
         titre: 'Ouvrir les inscriptions',
-        description: 'Le concours est prêt. Ouvrez les inscriptions pour commencer à enregistrer les équipes.',
+        description: `Le concours est prêt. Ouvrez les inscriptions pour commencer à enregistrer les ${estTeteATete ? 'joueurs' : 'équipes'}.`,
       };
 
     case StatutConcours.INSCRIPTIONS_OUVERTES: {
@@ -63,14 +64,15 @@ export function obtenirProchaineAction(concours: Concours): ProchaineAction {
       const manquantes = Math.max(0, minimum - inscrites);
 
       if (manquantes > 0) {
+        const libelleParticipant = estTeteATete ? 'joueur' : 'équipe';
         return {
           code: 'COMPLETER_INSCRIPTIONS',
-          titre: `Inscrire encore ${manquantes} équipe${manquantes > 1 ? 's' : ''}`,
-          description: `Il faut au moins ${minimum} équipes pour pouvoir clôturer les inscriptions.`,
+          titre: `Inscrire encore ${manquantes} ${libelleParticipant}${manquantes > 1 ? 's' : ''}`,
+          description: `Il faut au moins ${minimum} ${libelleParticipant}${minimum > 1 ? 's' : ''} pour pouvoir clôturer les inscriptions.`,
           progression: {
             valeur: inscrites,
             total: minimum,
-            libelle: `${inscrites} sur ${minimum} équipes minimum`,
+            libelle: `${inscrites} sur ${minimum} ${libelleParticipant}${minimum > 1 ? 's' : ''} minimum`,
           },
         };
       }
@@ -78,7 +80,7 @@ export function obtenirProchaineAction(concours: Concours): ProchaineAction {
       return {
         code: 'CLOTURER_INSCRIPTIONS',
         titre: 'Clôturer les inscriptions',
-        description: `${inscrites} équipes sont inscrites. Vous pouvez maintenant préparer le tirage.`,
+        description: `${inscrites} ${estTeteATete ? 'joueurs sont inscrits' : 'équipes sont inscrites'}. Vous pouvez maintenant préparer le tirage.`,
       };
     }
 
@@ -88,7 +90,7 @@ export function obtenirProchaineAction(concours: Concours): ProchaineAction {
         titre: 'Lancer le tirage',
         description: concours.estMelee
           ? `${concours.participantsMeleeActifs.length} joueurs seront répartis en équipes équilibrées.`
-          : `${concours.inscriptionsActives.length} équipes seront réparties selon le format du concours.`,
+          : `${concours.inscriptionsActives.length} ${estTeteATete ? 'joueurs' : 'équipes'} seront réparti${estTeteATete ? 's' : 'es'} selon le format du concours.`,
       };
 
     case StatutConcours.TIRAGE_EN_COURS:

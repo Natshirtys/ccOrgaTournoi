@@ -26,6 +26,7 @@ function creerConcours(
   statut: StatutConcours,
   nbInscriptions = 0,
   phase?: Phase,
+  typeEquipe = TypeEquipe.DOUBLETTE,
 ): Concours {
   const phaseDefinition = new PhaseDefinition(
     TypePhase.ELIMINATION_SIMPLE,
@@ -45,7 +46,7 @@ function creerConcours(
     new DateRange(new Date('2026-09-01'), new Date('2026-09-01')),
     'Lyon',
     'org-1',
-    new FormuleConcours(TypeEquipe.DOUBLETTE, [phaseDefinition], 4, 16),
+    new FormuleConcours(typeEquipe, [phaseDefinition], 4, 16),
     new ReglementConcours(),
     statut,
     [],
@@ -102,6 +103,15 @@ describe('obtenirProchaineAction', () => {
       total: 4,
       libelle: '2 sur 4 équipes minimum',
     });
+  });
+
+  it('parle de joueurs pour un concours en tête-à-tête', () => {
+    const action = obtenirProchaineAction(
+      creerConcours(StatutConcours.INSCRIPTIONS_OUVERTES, 2, undefined, TypeEquipe.TETE_A_TETE),
+    );
+
+    expect(action.titre).toContain('2 joueurs');
+    expect(action.progression?.libelle).toBe('2 sur 4 joueurs minimum');
   });
 
   it('propose de clôturer quand le minimum est atteint', () => {
