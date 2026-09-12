@@ -202,7 +202,7 @@ export function ClassementTab({ concours }: ClassementTabProps) {
           <span className="pr-1 text-right text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
             #
           </span>
-          <HeaderCell first>{concours.formule.typePhase === 'MELEE_TOURNANTE' ? 'Joueur' : 'Équipe'}</HeaderCell>
+          <HeaderCell first>{concours.formule.typePhase === 'MELEE_TOURNANTE' || concours.formule.typeEquipe === 'TETE_A_TETE' ? 'Joueur' : 'Équipe'}</HeaderCell>
           <HeaderCell>V</HeaderCell>
           <HeaderCell>D</HeaderCell>
           <HeaderCell className="hidden sm:inline">Pm</HeaderCell>

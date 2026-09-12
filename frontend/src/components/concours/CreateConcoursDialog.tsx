@@ -104,7 +104,7 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {!['MELEE', 'MELEE_TOURNANTE'].includes(typePhase) && <SelectItem value="TETE_A_TETE">Tête-à-tête</SelectItem>}
+                {typePhase !== 'MELEE_TOURNANTE' && <SelectItem value="TETE_A_TETE">Tête-à-tête</SelectItem>}
                 <SelectItem value="DOUBLETTE">Doublette</SelectItem>
                 <SelectItem value="TRIPLETTE">Triplette</SelectItem>
                 {!['MELEE', 'MELEE_TOURNANTE'].includes(typePhase) && <SelectItem value="QUADRETTE">Quadrette</SelectItem>}
@@ -116,7 +116,8 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
             <Select value={typePhase} onValueChange={(v) => {
               const next = v as TypePhase;
               setTypePhase(next);
-              if (['MELEE', 'MELEE_TOURNANTE'].includes(next) && !['DOUBLETTE', 'TRIPLETTE'].includes(typeEquipe)) setTypeEquipe('DOUBLETTE');
+              if (next === 'MELEE_TOURNANTE' && !['DOUBLETTE', 'TRIPLETTE'].includes(typeEquipe)) setTypeEquipe('DOUBLETTE');
+              if (next === 'MELEE' && typeEquipe === 'QUADRETTE') setTypeEquipe('DOUBLETTE');
             }}>
               <SelectTrigger className="w-full">
                 <SelectValue />
@@ -150,7 +151,9 @@ export function CreateConcoursDialog({ onSubmit, isPending }: CreateConcoursDial
                 </div>
               )}
               <p className="text-xs text-muted-foreground sm:col-span-2">
-                Inscriptions individuelles, postes préférentiels et équipes équilibrées. Aucun match nul.
+                {typeEquipe === 'TETE_A_TETE'
+                  ? 'Inscriptions individuelles, adversaires renouvelés au mieux. Aucun match nul.'
+                  : 'Inscriptions individuelles, postes préférentiels et équipes équilibrées. Aucun match nul.'}
               </p>
             </div>
           )}

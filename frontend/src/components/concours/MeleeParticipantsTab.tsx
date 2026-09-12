@@ -19,7 +19,7 @@ const POSTE_LABELS: Record<PosteMelee, string> = {
   POLYVALENT: 'Polyvalent',
 };
 
-function ParticipantDialog({ concoursId, participant }: { concoursId: string; participant?: ParticipantMeleeDto }) {
+function ParticipantDialog({ concoursId, participant, showPoste }: { concoursId: string; participant?: ParticipantMeleeDto; showPoste: boolean }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [nom, setNom] = useState(participant?.nom ?? '');
@@ -48,17 +48,19 @@ function ParticipantDialog({ concoursId, participant }: { concoursId: string; pa
         <DialogHeader><DialogTitle>{participant ? 'Modifier le joueur' : 'Ajouter un joueur'}</DialogTitle></DialogHeader>
         <form className="grid gap-4" onSubmit={(event) => { event.preventDefault(); mutation.mutate(); }}>
           <div className="grid gap-2"><Label htmlFor="participant-nom">Nom</Label><Input id="participant-nom" value={nom} onChange={(event) => setNom(event.target.value)} required /></div>
-          <div className="grid gap-2">
-            <Label>Poste préférentiel</Label>
-            <Select value={poste} onValueChange={(value) => setPoste(value as PosteMelee)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="POINTEUR">Pointeur</SelectItem>
-                <SelectItem value="TIREUR">Tireur</SelectItem>
-                <SelectItem value="POLYVALENT">Polyvalent</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {showPoste && (
+            <div className="grid gap-2">
+              <Label>Poste préférentiel</Label>
+              <Select value={poste} onValueChange={(value) => setPoste(value as PosteMelee)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="POINTEUR">Pointeur</SelectItem>
+                  <SelectItem value="TIREUR">Tireur</SelectItem>
+                  <SelectItem value="POLYVALENT">Polyvalent</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <ActionError error={mutation.error} />
           <DialogFooter><Button type="submit" disabled={mutation.isPending}>{participant ? 'Enregistrer' : 'Ajouter'}</Button></DialogFooter>
         </form>
@@ -79,7 +81,9 @@ export function MeleeParticipantsTab({ concours, readOnly = false }: { concours:
   const toggleMutation = useMutation({ mutationFn: ({ id, actif }: { id: string; actif: boolean }) => definirParticipantMeleeActif(concours.id, id, actif), onSuccess: invalidate });
   const deleteMutation = useMutation({ mutationFn: (id: string) => supprimerParticipantMelee(concours.id, id), onSuccess: invalidate });
   const actifs = concours.participantsMelee.filter((participant) => participant.actif).length;
-  const multiple = concours.formule.typeEquipe === 'DOUBLETTE' ? 4 : 6;
+  const isTeteATete = concours.formule.typeEquipe === 'TETE_A_TETE';
+  const joueursParEquipe = isTeteATete ? 1 : concours.formule.typeEquipe === 'DOUBLETTE' ? 2 : 3;
+  const multiple = joueursParEquipe * 2;
   const compatible = actifs >= multiple && actifs % multiple === 0;
 
   return (
@@ -99,13 +103,13 @@ export function MeleeParticipantsTab({ concours, readOnly = false }: { concours:
                 invalidate();
               }}
             />
-            <ParticipantDialog concoursId={concours.id} />
+            <ParticipantDialog concoursId={concours.id} showPoste={!isTeteATete} />
           </div>
         )}
       </div>
       {!compatible && concours.participantsMelee.length > 0 && (
         <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
-          Il faut un nombre de joueurs multiple de {multiple} pour former des matchs complets en {concours.formule.typeEquipe === 'DOUBLETTE' ? 'doublette' : 'triplette'}.
+          Il faut un nombre de joueurs multiple de {multiple} pour former des matchs complets en {isTeteATete ? 'tête-à-tête' : concours.formule.typeEquipe === 'DOUBLETTE' ? 'doublette' : 'triplette'}.
         </p>
       )}
       <ActionError error={toggleMutation.error ?? deleteMutation.error} />
@@ -116,9 +120,9 @@ export function MeleeParticipantsTab({ concours, readOnly = false }: { concours:
           {concours.participantsMelee.map((participant, index) => (
             <div key={participant.id} className={`flex items-center gap-3 rounded-xl border bg-card px-4 py-3 ${participant.actif ? '' : 'opacity-55'}`}>
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">{index + 1}</span>
-              <div className="min-w-0 flex-1"><p className="truncate font-semibold">{participant.nom}</p><Badge variant="outline" className="mt-1">{POSTE_LABELS[participant.poste]}</Badge></div>
+              <div className="min-w-0 flex-1"><p className="truncate font-semibold">{participant.nom}</p>{!isTeteATete && <Badge variant="outline" className="mt-1">{POSTE_LABELS[participant.poste]}</Badge>}</div>
               {canToggle && <Switch checked={participant.actif} onCheckedChange={(actif) => toggleMutation.mutate({ id: participant.id, actif })} aria-label={`Disponibilité de ${participant.nom}`} />}
-              {canEdit && <ParticipantDialog concoursId={concours.id} participant={participant} />}
+              {canEdit && <ParticipantDialog concoursId={concours.id} participant={participant} showPoste={!isTeteATete} />}
               {canEdit && <Button variant="ghost" size="icon-xs" className="text-destructive hover:text-destructive" onClick={() => deleteMutation.mutate(participant.id)} title={`Retirer ${participant.nom}`}><Trash2 /></Button>}
             </div>
           ))}

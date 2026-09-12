@@ -851,6 +851,61 @@ describe('API Concours', () => {
     expect(classementRes.body.classement).toHaveLength(8);
   });
 
+  it('gère un tête-à-tête en mêlée fixe sur trois parties', async () => {
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'Tête-à-tête en trois parties',
+      dateDebut: '2026-09-13',
+      typeEquipe: 'TETE_A_TETE',
+      typePhase: 'MELEE',
+      nbParties: 3,
+      nbTerrains: 2,
+    });
+    expect(createRes.status).toBe(201);
+    const id = createRes.body.id as string;
+    await request(app, 'POST', `/api/v1/concours/${id}/ouvrir-inscriptions`);
+
+    for (let index = 1; index <= 4; index++) {
+      const participantRes = await request(app, 'POST', `/api/v1/concours/${id}/participants-melee`, {
+        nom: `Joueur ${index}`,
+        poste: 'POLYVALENT',
+      });
+      expect(participantRes.status).toBe(201);
+    }
+
+    await request(app, 'POST', `/api/v1/concours/${id}/cloturer-inscriptions`);
+    const drawRes = await request(app, 'POST', `/api/v1/concours/${id}/tirage`, {});
+    expect(drawRes.status).toBe(201);
+
+    for (let partie = 1; partie <= 3; partie++) {
+      const matchsRes = await request(app, 'GET', `/api/v1/concours/${id}/matchs`);
+      const matchs = (matchsRes.body.data as Array<{
+        id: string;
+        tourNumero: number;
+        participantIdsEquipeA: string[];
+        participantIdsEquipeB: string[];
+      }>).filter((match) => match.tourNumero === partie);
+      expect(matchs).toHaveLength(2);
+      expect(matchs.every((match) => (
+        match.participantIdsEquipeA.length === 1 && match.participantIdsEquipeB.length === 1
+      ))).toBe(true);
+
+      for (const match of matchs) {
+        await request(app, 'POST', `/api/v1/concours/${id}/matchs/${match.id}/demarrer`);
+        await request(app, 'POST', `/api/v1/concours/${id}/matchs/${match.id}/score`, {
+          scoreEquipeA: 13,
+          scoreEquipeB: 8,
+        });
+      }
+
+      const nextRes = await request(app, 'POST', `/api/v1/concours/${id}/generer-tour-suivant`, {});
+      expect(nextRes.status).toBe(partie < 3 ? 201 : 200);
+    }
+
+    const classementRes = await request(app, 'GET', `/api/v1/concours/${id}/classement`);
+    expect(classementRes.status).toBe(200);
+    expect(classementRes.body.classement).toHaveLength(4);
+  });
+
   it('rouvre les inscriptions après un tirage intact et conserve les joueurs', async () => {
     const createRes = await request(app, 'POST', '/api/v1/concours', {
       nom: 'Mêlée à corriger',

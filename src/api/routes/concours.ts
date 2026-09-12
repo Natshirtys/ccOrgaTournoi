@@ -223,8 +223,13 @@ export function createConcoursRouter(ctx: AppContext): Router {
 
     const dates = new DateRange(new Date(data.dateDebut), new Date(data.dateFin ?? data.dateDebut));
     const estMelee = data.typePhase === TypePhase.MELEE || data.typePhase === TypePhase.MELEE_TOURNANTE;
-    if (estMelee && ![TypeEquipe.DOUBLETTE, TypeEquipe.TRIPLETTE].includes(data.typeEquipe)) {
-      throw ApiError.badRequest('La mêlée est disponible uniquement en doublette ou en triplette');
+    if (data.typePhase === TypePhase.MELEE_TOURNANTE
+      && ![TypeEquipe.DOUBLETTE, TypeEquipe.TRIPLETTE].includes(data.typeEquipe)) {
+      throw ApiError.badRequest('La mêlée tournante est disponible uniquement en doublette ou en triplette');
+    }
+    if (data.typePhase === TypePhase.MELEE
+      && ![TypeEquipe.TETE_A_TETE, TypeEquipe.DOUBLETTE, TypeEquipe.TRIPLETTE].includes(data.typeEquipe)) {
+      throw ApiError.badRequest('La mêlée à équipes fixes est disponible en tête-à-tête, doublette ou triplette');
     }
     const phaseDefinition = new PhaseDefinition(
       data.typePhase,

@@ -27,7 +27,7 @@ import {
   exporterSauvegardeConcours,
 } from '@/api/concours';
 import { telechargerSauvegarde } from '@/lib/concours-backup';
-import type { ConcoursDetail, TypePhase } from '@/types/concours';
+import type { ConcoursDetail, TypeEquipe, TypePhase } from '@/types/concours';
 
 const TYPE_LABELS: Record<string, string> = {
   TETE_A_TETE: 'Tête-à-tête',
@@ -46,11 +46,12 @@ function formatDates(debut: string, fin: string) {
 
 // ─── Règles par format ────────────────────────────────────────────────────────
 
-function FormatRulesContent({ typePhase }: { typePhase?: TypePhase }) {
+function FormatRulesContent({ typePhase, typeEquipe }: { typePhase?: TypePhase; typeEquipe?: TypeEquipe }) {
   if (typePhase === 'MELEE' || typePhase === 'MELEE_TOURNANTE') {
+    const isTeteATete = typeEquipe === 'TETE_A_TETE';
     return (
       <div className="space-y-4 text-sm">
-        <section><h3 className="mb-1 font-semibold">Composition</h3><ul className="list-disc space-y-1 pl-4 text-muted-foreground"><li>Inscriptions individuelles avec poste préférentiel</li><li>{typePhase === 'MELEE' ? 'Équipes conservées pendant tout le concours' : 'Équipes recomposées à chaque partie'}</li><li>Les répétitions de partenaires puis d’adversaires sont limitées au mieux</li><li>Aucun match nul</li></ul></section>
+        <section><h3 className="mb-1 font-semibold">Composition</h3><ul className="list-disc space-y-1 pl-4 text-muted-foreground"><li>{isTeteATete ? 'Inscriptions individuelles' : 'Inscriptions individuelles avec poste préférentiel'}</li><li>{isTeteATete ? 'Chaque joueur participe individuellement à toutes les parties' : typePhase === 'MELEE' ? 'Équipes conservées pendant tout le concours' : 'Équipes recomposées à chaque partie'}</li><li>{isTeteATete ? 'Les adversaires déjà rencontrés sont évités au mieux' : 'Les répétitions de partenaires puis d’adversaires sont limitées au mieux'}</li><li>Aucun match nul</li></ul></section>
         <section><h3 className="mb-1 font-semibold">Classement</h3><ol className="list-decimal space-y-1 pl-4 text-muted-foreground"><li>Nombre de victoires</li><li>Différence de score</li><li>Total des points marqués</li></ol></section>
       </div>
     );
@@ -283,7 +284,7 @@ export function ConcoursInfoCard({ concours, onNavigateToTab }: ConcoursInfoCard
                     {typePhase ? (FORMAT_TITLES[typePhase] ?? typePhase) : 'Règles du concours'}
                   </DialogTitle>
                 </DialogHeader>
-                <FormatRulesContent typePhase={typePhase} />
+                <FormatRulesContent typePhase={typePhase} typeEquipe={concours.formule.typeEquipe} />
               </DialogContent>
             </Dialog>
           </div>

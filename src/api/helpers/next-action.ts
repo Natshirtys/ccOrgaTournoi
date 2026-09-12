@@ -89,7 +89,9 @@ export function obtenirProchaineAction(concours: Concours): ProchaineAction {
         code: 'LANCER_TIRAGE',
         titre: 'Lancer le tirage',
         description: concours.estMelee
-          ? `${concours.participantsMeleeActifs.length} joueurs seront répartis en équipes équilibrées.`
+          ? estTeteATete
+            ? `${concours.participantsMeleeActifs.length} joueurs participeront individuellement.`
+            : `${concours.participantsMeleeActifs.length} joueurs seront répartis en équipes équilibrées.`
           : `${concours.inscriptionsActives.length} ${estTeteATete ? 'joueurs' : 'équipes'} seront réparti${estTeteATete ? 's' : 'es'} selon le format du concours.`,
       };
 
