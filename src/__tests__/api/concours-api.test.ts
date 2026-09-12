@@ -169,6 +169,47 @@ describe('API Concours', () => {
     expect(classement[0].points).toBeGreaterThan(0);
   });
 
+  it('le premier tour suisse ne crée pas de faux participants pour 20 inscrits', async () => {
+    const createRes = await request(app, 'POST', '/api/v1/concours', {
+      nom: 'Suisse à 20 joueurs',
+      dateDebut: '2026-09-13',
+      typeEquipe: 'TETE_A_TETE',
+      typePhase: 'SYSTEME_SUISSE',
+      nbEquipesMin: 4,
+      nbEquipesMax: 32,
+      nbTerrains: 12,
+    });
+    expect(createRes.status).toBe(201);
+    const concoursId = createRes.body.id as string;
+    await request(app, 'POST', `/api/v1/concours/${concoursId}/ouvrir-inscriptions`);
+
+    const equipeIds: string[] = [];
+    for (let index = 1; index <= 20; index++) {
+      const inscriptionRes = await request(app, 'POST', `/api/v1/concours/${concoursId}/inscriptions`, {
+        nomEquipe: `Joueur ${index}`,
+        joueurs: [`Joueur ${index}`],
+        club: '',
+      });
+      expect(inscriptionRes.status).toBe(201);
+      equipeIds.push(inscriptionRes.body.equipeId as string);
+    }
+
+    await request(app, 'POST', `/api/v1/concours/${concoursId}/cloturer-inscriptions`);
+    const tirageRes = await request(app, 'POST', `/api/v1/concours/${concoursId}/tirage`, {});
+    expect(tirageRes.status).toBe(201);
+
+    const matchsRes = await request(app, 'GET', `/api/v1/concours/${concoursId}/matchs`);
+    const matchs = matchsRes.body.data as Array<{ equipeAId: string; equipeBId: string | null }>;
+    const inscrits = new Set(equipeIds);
+
+    expect(matchs).toHaveLength(10);
+    expect(matchs.every((match) => (
+      inscrits.has(match.equipeAId)
+      && match.equipeBId !== null
+      && inscrits.has(match.equipeBId)
+    ))).toBe(true);
+  });
+
   it('permet de modifier puis annuler une inscription ouverte', async () => {
     const createRes = await request(app, 'POST', '/api/v1/concours', {
       nom: 'Gestion inscriptions',

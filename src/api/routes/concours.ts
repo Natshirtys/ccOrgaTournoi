@@ -20,6 +20,7 @@ import { PoolPhaseStrategy } from '../../engine/strategies/phase/pool-phase-stra
 import { RoundRobinPoolStrategy } from '../../engine/strategies/phase/round-robin-pool-strategy.js';
 import { SingleEliminationStrategy } from '../../engine/strategies/phase/single-elimination-strategy.js';
 import { SwissSystemStrategy } from '../../engine/strategies/phase/swiss-system-strategy.js';
+import type { DrawResult } from '../../engine/strategies/interfaces.js';
 import { deserialize, serialize } from '../../infrastructure/db/concours-mapper.js';
 import type { ConcoursData } from '../../infrastructure/db/types.js';
 import { obtenirProchaineAction } from '../helpers/next-action.js';
@@ -558,12 +559,18 @@ export function createConcoursRouter(ctx: AppContext): Router {
       ? buildClubMap(concours.inscriptionsActives)
       : new Map<string, string>();
 
-    const drawStrategy = new IntegralDrawStrategy(nbPoules);
-    const drawResult = drawStrategy.execute({
-      equipeIds,
-      constraints: { protectionClub: useProtectionClub, clubsByEquipe },
-      tetesDeSerieIds: tetesDeSerieIds.length > 0 ? tetesDeSerieIds : undefined,
-    });
+    // Le système suisse travaille directement avec les inscrits réels : il ne doit
+    // pas recevoir les BYEs techniques ajoutés pour compléter un tableau à élimination.
+    const drawResult: DrawResult = phaseType === TypePhase.SYSTEME_SUISSE
+      ? {
+          assignments: equipeIds.map((equipeId, position) => ({ equipeId, position })),
+          byes: [],
+        }
+      : new IntegralDrawStrategy(nbPoules).execute({
+          equipeIds,
+          constraints: { protectionClub: useProtectionClub, clubsByEquipe },
+          tetesDeSerieIds: tetesDeSerieIds.length > 0 ? tetesDeSerieIds : undefined,
+        });
 
     // Créer la phase — stocker nbPoules et assignments dans constraints pour reconstruction
     const baseConfig = concours.formule.phases[0];
