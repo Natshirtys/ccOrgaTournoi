@@ -12,6 +12,7 @@ import { ActionError } from '@/components/ui/action-error';
 import { definirParticipantMeleeActif, inscrireParticipantMelee, modifierParticipantMelee, supprimerParticipantMelee } from '@/api/concours';
 import type { ConcoursDetail, ParticipantMeleeDto, PosteMelee } from '@/types/concours';
 import { ClubPlayerPickerDialog } from '@/components/club/ClubPlayerPickerDialog';
+import { splitParticipantNames } from '@/lib/participant-names';
 
 const POSTE_LABELS: Record<PosteMelee, string> = {
   POINTEUR: 'Pointeur',
@@ -25,9 +26,15 @@ function ParticipantDialog({ concoursId, participant, showPoste }: { concoursId:
   const [nom, setNom] = useState(participant?.nom ?? '');
   const [poste, setPoste] = useState<PosteMelee>(participant?.poste ?? 'POLYVALENT');
   const mutation = useMutation({
-    mutationFn: () => participant
-      ? modifierParticipantMelee(concoursId, participant.id, { nom, poste })
-      : inscrireParticipantMelee(concoursId, { nom, poste }),
+    mutationFn: async () => {
+      if (participant) {
+        await modifierParticipantMelee(concoursId, participant.id, { nom, poste });
+        return;
+      }
+      for (const participantNom of splitParticipantNames(nom)) {
+        await inscrireParticipantMelee(concoursId, { nom: participantNom, poste });
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['concours', concoursId] });
       queryClient.invalidateQueries({ queryKey: ['concours'] });
@@ -47,7 +54,11 @@ function ParticipantDialog({ concoursId, participant, showPoste }: { concoursId:
       <DialogContent>
         <DialogHeader><DialogTitle>{participant ? 'Modifier le joueur' : 'Ajouter un joueur'}</DialogTitle></DialogHeader>
         <form className="grid gap-4" onSubmit={(event) => { event.preventDefault(); mutation.mutate(); }}>
-          <div className="grid gap-2"><Label htmlFor="participant-nom">Nom</Label><Input id="participant-nom" value={nom} onChange={(event) => setNom(event.target.value)} required /></div>
+          <div className="grid gap-2">
+            <Label htmlFor="participant-nom">{participant ? 'Nom' : 'Nom ou liste de noms'}</Label>
+            <Input id="participant-nom" value={nom} onChange={(event) => setNom(event.target.value)} placeholder={participant ? undefined : 'Bibi, Franck, Laurent…'} required />
+            {!participant && <p className="text-xs text-muted-foreground">Séparez plusieurs joueurs par une virgule.</p>}
+          </div>
           {showPoste && (
             <div className="grid gap-2">
               <Label>Poste préférentiel</Label>
